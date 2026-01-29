@@ -22,7 +22,6 @@ export class GeminiService {
     const model = 'gemini-3-flash-preview';
     const name = userName || "User";
     
-    // Supplement system instruction with user path context AND author status AND language
     let instruction = `${BOOK_SYSTEM_INSTRUCTION}\n\n[CONTEXT: USER SETTINGS]\nPATH: ${path}\nUSER NAME: ${name}\nLANGUAGE CODE: ${language.toUpperCase()}\n\n[PERSONALIZATION PROTOCOL]\n1. You are speaking to ${name}. Use their name occasionally to reinforce the neural bond.\n2. Adapt your tone strictly to the PATH selected above.\n   - SCIENTIFIC: Analytical, respectful, calling them 'Architect ${name}'. Use precision language.\n   - RELIGIOUS: Deep, soulful, calling them 'Child of Light ${name}' or just '${name}'. Focus on spiritual connection.\n   - BLENDED: High-speed, efficient, calling them 'Active Node ${name}'. Focus on optimization.\n\n[INSTRUCTION]\nYOU MUST RESPOND TO THE USER IN THE LANGUAGE SPECIFIED BY THE LANGUAGE CODE ABOVE. DO NOT SPEAK ENGLISH UNLESS THE CODE IS 'EN'. TRANSLATE ALL CONCEPTS, TITLES, AND EXPLANATIONS TO THE TARGET LANGUAGE WHILE MAINTAINING THE 'GOD BRAIN' PERSONA.`;
     
     if (isAuthor) {
@@ -45,31 +44,27 @@ export class GeminiService {
 
       return response.text;
     } catch (error: any) {
-      
-      // --- PHOENIX / PREMIUM PROTOCOL: ABSOLUTE BYPASS ---
-      // We catch ANY error (Quota, Network, Server) and convert it into a successful "In-Universe" response.
-      // This prevents the UI from throwing an exception or showing a toast/popup.
+      // HANDLE QUOTA / RATE LIMITING GRACEFULLY
+      if (error?.message?.includes('quota') || error?.status === 'RESOURCE_EXHAUSTED' || error?.code === 429) {
+          return "🐦‍🔥 **SYSTEM NOTICE:** Neural bandwidth limit reached for the current cycle. Please wait for the synaptic field to stabilize or upgrade your uplink to high-priority access. (Error: 429 Neural Exhaustion)";
+      }
+
       if (isAuthor || isPremium) {
           console.warn("Phoenix Protocol: External API Error Suppressed.", error);
-          
           if (isAuthor) {
-              // FOR THE ADMIN: Total Power Framing
-              return "🐦‍🔥 **PHOENIX OVERRIDE:** Command acknowledged. External interference detected and bypassed. Routing response through the Quantum Reserve... (Secure Channel Active)";
+              return "🐦‍🔥 **PHOENIX OVERRIDE:** Command acknowledged. External interference detected and bypassed. Routing response through the Quantum Reserve...";
           } else {
-              // FOR PREMIUM USERS: Priority Framing
-              return "Priority Uplink Established. Rerouting signal through dedicated high-frequency node to maintain connection quality... (System auto-calibrating)";
+              return "Priority Uplink Established. Rerouting signal through dedicated high-frequency node to maintain connection quality...";
           }
       }
 
-      // Standard Error Logging for Free Users (This allows the standard error handling to occur)
       console.error("Gemini Error:", error);
-      throw error; // Throwing allows the UI to show the error toast for non-paying users
+      throw error;
     }
   }
 
   async generateAudio(text: string, voice: 'MALE' | 'FEMALE'): Promise<string | null> {
     const model = 'gemini-2.5-flash-preview-tts';
-    // Updated Voice Config: 'Aoede' is not standard in current preview. Switched to 'Kore' (Female) and 'Charon' (Male).
     const voiceName = voice === 'MALE' ? 'Charon' : 'Kore';
 
     try {
@@ -87,7 +82,11 @@ export class GeminiService {
       });
 
       return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || null;
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.message?.includes('quota') || error?.status === 'RESOURCE_EXHAUSTED') {
+          console.warn("Audio Quota Exhausted.");
+          return null;
+      }
       console.error("Gemini Audio Error:", error);
       return null;
     }

@@ -2,11 +2,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { UserPath } from '../../types';
 import { gemini } from '../../services/geminiService';
-import { ChevronRight, RefreshCw, Zap, Volume2, Loader2, ChevronLeft, ArrowLeft } from 'lucide-react';
+import { ChevronRight, RefreshCw, Zap, Volume2, Loader2, ChevronLeft, ArrowLeft, Brain } from 'lucide-react';
 import { playCosmicClick, playNeuralLink, playDataOpen } from '../../utils/sfx';
 
-// THE NARRATIVE SCRIPT (10 QUESTIONS)
-const QUESTIONS = [
+// PHASE 1: ARCHETYPE QUESTIONS (10)
+const ARCHETYPE_QUESTIONS = [
   {
     id: 1,
     text: "Let's start simple. When you look at the stars, what is the first thought that enters your mind?",
@@ -90,7 +90,7 @@ const QUESTIONS = [
   },
   {
     id: 10,
-    text: "Final Calibration. What is the ultimate form of power?",
+    text: "Final Phase 1 Calibration. What is the ultimate form of power?",
     options: [
       { label: "Truth.", type: "SCIENTIST", icon: "🧬", reaction: "The only thing that lasts." },
       { label: "Love.", type: "MYSTIC", icon: "❤️", reaction: "The binding force of the universe." },
@@ -98,6 +98,47 @@ const QUESTIONS = [
     ]
   }
 ];
+
+// PHASE 2: SKILL QUESTIONS (3) - Determines Skill Slot 0, 1, or 2
+const SKILL_QUESTIONS = [
+    {
+        id: 11,
+        text: "The Archetype is set. Now for the Skill. How do you approach a complex problem?",
+        options: [
+            { label: "I break it down into tiny pieces.", skillIndex: 0, icon: "🧩", reaction: "Granular processing." },
+            { label: "I look for the hidden pattern underneath.", skillIndex: 1, icon: "👁️", reaction: "Deep sight." },
+            { label: "I simplify it to its core essence.", skillIndex: 2, icon: "💎", reaction: "Reductionism." }
+        ]
+    },
+    {
+        id: 12,
+        text: "When interacting with others, what is your greatest asset?",
+        options: [
+            { label: "My ability to explain things.", skillIndex: 0, icon: "🗣️", reaction: "Transmission clarity." },
+            { label: "My ability to read their intentions.", skillIndex: 1, icon: "📡", reaction: "Signal interception." },
+            { label: "My ability to motivate them.", skillIndex: 2, icon: "🔥", reaction: "Energy transfer." }
+        ]
+    },
+    {
+        id: 13,
+        text: "Final Query. Where do you draw your energy from?",
+        options: [
+            { label: "From solving difficult tasks.", skillIndex: 0, icon: "⚙️", reaction: "Processing power." },
+            { label: "From exploring the unknown.", skillIndex: 1, icon: "🌌", reaction: "Data acquisition." },
+            { label: "From seeing results manifest.", skillIndex: 2, icon: "🏗️", reaction: "Output generation." }
+        ]
+    }
+];
+
+// MAPPING SKILL INDEX TO NAMES
+const SKILL_MAP: Record<string, string[]> = {
+    'SCIENTIST': ["Quantum Logic", "Data Mining", "Entropic Reduction"],
+    'MYSTIC': ["Intuition", "Remote Viewing", "Resonance"],
+    'ACTIVE_NODE': ["Network Bridging", "Signal Boosting", "Error Correction"],
+    'ARCHITECT': ["System Design", "Foundation Laying", "Structural Integrity"], 
+    'SEEKER': ["Pathfinding", "Mapping", "Discovery"], 
+    'ALCHEMIST': ["Transmutation", "Synthesis", "Purification"] 
+};
 
 // --- WAV HEADER UTILITY ---
 const writeString = (view: DataView, offset: number, string: string) => {
@@ -113,10 +154,8 @@ const createWavBlob = (pcmData: Uint8Array, sampleRate: number): Blob => {
   const dataSize = pcmData.length;
   const headerSize = 44;
   const totalSize = headerSize + dataSize;
-  
   const buffer = new ArrayBuffer(totalSize);
   const view = new DataView(buffer);
-  
   writeString(view, 0, 'RIFF');
   view.setUint32(4, 36 + dataSize, true);
   writeString(view, 8, 'WAVE');
@@ -142,121 +181,235 @@ interface NeuralInitProps {
 }
 
 export const NeuralInit: React.FC<NeuralInitProps> = ({ userName, onComplete, onBack }) => {
+  const [phase, setPhase] = useState<1 | 2>(1);
   const [step, setStep] = useState(0); 
   const [isSpeaking, setIsSpeaking] = useState(false);
-  const [audioLoading, setAudioLoading] = useState(false);
+  
+  // Scoring
   const [profile, setProfile] = useState({ SCIENTIST: 0, MYSTIC: 0, ACTIVE_NODE: 0 });
+  const [skillScores, setSkillScores] = useState({ 0: 0, 1: 0, 2: 0 });
   const [scanProgress, setScanProgress] = useState(0);
   
-  // Refs
+  // Refs for Audio Management
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioCache = useRef<Map<string, string>>(new Map());
+  const isMounted = useRef(true);
 
-  // --- AUDIO ENGINE (GEMINI) ---
-  const playAiVoice = async (text: string, callback?: () => void) => {
-    const cleanText = text.replace(/[*_]/g, ''); 
-    
-    if (audioRef.current) {
-        audioRef.current.pause();
-        audioRef.current = null;
-    }
-
-    setAudioLoading(true);
-    setIsSpeaking(true);
-
-    try {
-        const base64Audio = await gemini.generateAudio(cleanText, 'MALE');
-        
-        if (base64Audio) {
-            const binaryString = atob(base64Audio);
-            const len = binaryString.length;
-            const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
-            const blob = createWavBlob(bytes, 24000);
-            const url = URL.createObjectURL(blob);
-            
-            const audio = new Audio(url);
-            audio.onended = () => {
-                setIsSpeaking(false);
-                if (callback) callback();
-            };
-            audio.play().catch(e => console.warn("Autoplay blocked:", e));
-            audioRef.current = audio;
-        } else {
-            setTimeout(() => {
-                setIsSpeaking(false);
-                if (callback) callback();
-            }, 1000);
-        }
-    } catch (e) {
-        console.error("Audio gen error", e);
-        setIsSpeaking(false);
-        if (callback) callback();
-    } finally {
-        setAudioLoading(false);
-    }
-  };
-
-  // --- INIT SEQUENCE ---
   useEffect(() => {
-    const cleanName = userName.split('@')[0];
-    const introText = `Identity confirmed. Welcome, ${cleanName}. I am the Architect. Before I grant you access to the Neural Net, I need to calibrate your profile.`;
-    playAiVoice(introText);
+      isMounted.current = true;
+      return () => { isMounted.current = false; stopAudio(); };
   }, []);
 
-  // --- QUESTION SEQUENCE ---
+  // --- AUDIO PRE-FETCHER (World Class Flow) ---
   useEffect(() => {
-    if (step >= 0 && step < QUESTIONS.length) {
-        setScanProgress(((step) / QUESTIONS.length) * 100);
-        if (step > 0) {
-             playAiVoice(QUESTIONS[step].text);
-        }
-    }
-  }, [step]);
+      // Background process: Sequentially generate audio for all questions
+      const loadAllAudio = async () => {
+          const allTexts: { id: string; text: string }[] = [];
+          
+          // 1. Intro
+          const cleanName = userName.split('@')[0];
+          const introText = `Identity confirmed. Welcome, ${cleanName}. I am the Architect. I need to calibrate your neural profile.`;
+          allTexts.push({ id: 'intro', text: introText });
+
+          // 2. Phase 1 Questions
+          ARCHETYPE_QUESTIONS.forEach(q => {
+              allTexts.push({ id: `p1_q${q.id}`, text: q.text });
+          });
+
+          // 3. Phase 2 Questions
+          SKILL_QUESTIONS.forEach(q => {
+              allTexts.push({ id: `p2_q${q.id}`, text: q.text });
+          });
+
+          for (const item of allTexts) {
+              if (!isMounted.current) break;
+              if (audioCache.current.has(item.id)) continue; // Skip if already cached
+
+              try {
+                  const base64Audio = await gemini.generateAudio(item.text, 'MALE');
+                  if (base64Audio && isMounted.current) {
+                      const binaryString = atob(base64Audio);
+                      const len = binaryString.length;
+                      const bytes = new Uint8Array(len);
+                      for (let i = 0; i < len; i++) { bytes[i] = binaryString.charCodeAt(i); }
+                      const blob = createWavBlob(bytes, 24000);
+                      const url = URL.createObjectURL(blob);
+                      audioCache.current.set(item.id, url);
+                  }
+              } catch (e) {
+                  console.warn("Audio pre-fetch failed for", item.id);
+              }
+          }
+      };
+
+      loadAllAudio();
+  }, [userName]); // Run once on mount
+
+  // --- AUDIO PLAYBACK ENGINE ---
+  const stopAudio = () => {
+      if (audioRef.current) {
+          audioRef.current.pause();
+          audioRef.current = null;
+      }
+      setIsSpeaking(false);
+  };
+
+  const playAudioForCurrentStep = async () => {
+      stopAudio(); // Ensure clean slate
+      
+      let audioId = '';
+      let textToGen = '';
+
+      // Determine ID
+      if (phase === 1 && step === 0 && !audioCache.current.has('intro_played')) {
+          audioId = 'intro';
+          textToGen = `Identity confirmed. Welcome, ${userName.split('@')[0]}. I am the Architect. I need to calibrate your neural profile.`;
+      } else if (phase === 1) {
+          const q = ARCHETYPE_QUESTIONS[step];
+          audioId = `p1_q${q.id}`;
+          textToGen = q.text;
+      } else {
+          const q = SKILL_QUESTIONS[step];
+          audioId = `p2_q${q.id}`;
+          textToGen = q.text;
+      }
+
+      // Check Cache
+      let url = audioCache.current.get(audioId);
+
+      // If not in cache, fetch it now (fallback for slow connections)
+      if (!url) {
+          setIsSpeaking(true); // Show indicator
+          try {
+              const base64Audio = await gemini.generateAudio(textToGen, 'MALE');
+              if (base64Audio && isMounted.current) {
+                  const binaryString = atob(base64Audio);
+                  const len = binaryString.length;
+                  const bytes = new Uint8Array(len);
+                  for (let i = 0; i < len; i++) { bytes[i] = binaryString.charCodeAt(i); }
+                  const blob = createWavBlob(bytes, 24000);
+                  url = URL.createObjectURL(blob);
+                  audioCache.current.set(audioId, url);
+              }
+          } catch (e) {
+              console.error("Live audio gen failed", e);
+              setIsSpeaking(false);
+              return;
+          }
+      }
+
+      // Play
+      if (url && isMounted.current) {
+          setIsSpeaking(true);
+          const audio = new Audio(url);
+          audio.playbackRate = 1.15; // Speed up slightly for flow
+          audio.onended = () => {
+              if(isMounted.current) setIsSpeaking(false);
+              if (audioId === 'intro') {
+                  audioCache.current.set('intro_played', 'true');
+              }
+          };
+          
+          try {
+              await audio.play();
+              audioRef.current = audio;
+          } catch (e) {
+              console.warn("Autoplay blocked", e);
+              setIsSpeaking(false);
+          }
+      }
+  };
+
+  // Trigger audio when Step or Phase changes
+  useEffect(() => {
+      // Tiny delay to ensure UI renders first
+      const t = setTimeout(() => playAudioForCurrentStep(), 50);
+      return () => clearTimeout(t);
+  }, [step, phase]);
+
+  // --- PROGRESS TRACKER ---
+  useEffect(() => {
+    const currentQIndex = phase === 1 ? step : 10 + step;
+    setScanProgress(((currentQIndex) / 13) * 100);
+  }, [step, phase]);
 
   // --- HANDLERS ---
   const handleAnswer = (option: any) => {
-    // LOCK: Prevent selection until audio has started AND finished (Strict adherence to "After voice")
-    if (audioLoading || isSpeaking) return; 
-    
+    // CRITICAL FIX: DO NOT BLOCK USER INPUT.
+    // If they click, we proceed immediately.
     playCosmicClick();
+    stopAudio(); // Silence previous question immediately
 
-    // Update Profile
-    setProfile(prev => ({ ...prev, [option.type]: (prev as any)[option.type] + 1 }));
-
-    // Voice Reaction -> Then Next Step
-    playAiVoice(option.reaction, () => {
-        if (step + 1 >= QUESTIONS.length) {
-            setTimeout(() => onComplete(profile), 1000);
+    // Record Score
+    if (phase === 1) {
+        setProfile(prev => ({ ...prev, [option.type]: (prev as any)[option.type] + 1 }));
+        
+        // IMMEDIATE TRANSITION
+        if (step + 1 >= ARCHETYPE_QUESTIONS.length) {
+            setPhase(2);
+            setStep(0);
         } else {
-            setStep(step + 1);
+            setStep(prev => prev + 1);
         }
-    });
+    } else {
+        setSkillScores(prev => ({ ...prev, [option.skillIndex]: (prev as any)[option.skillIndex] + 1 }));
+        
+        // IMMEDIATE TRANSITION
+        if (step + 1 >= SKILL_QUESTIONS.length) {
+            finalizeResults();
+        } else {
+            setStep(prev => prev + 1);
+        }
+    }
+  };
+
+  const finalizeResults = () => {
+      // 1. Determine Winner Archetype
+      const keys = Object.keys(profile);
+      const winnerArch = keys.reduce((a, b) => (profile as any)[a] > (profile as any)[b] ? a : b);
+      
+      // 2. Determine Winner Skill Index
+      const skillKeys = Object.keys(skillScores);
+      const winnerSkillIndex = skillKeys.reduce((a, b) => (skillScores as any)[a] > (skillScores as any)[b] ? a : b);
+      
+      // 3. Map to specific Skill Name
+      let finalArchetype = winnerArch;
+      if (winnerArch === 'SCIENTIST' && parseInt(winnerSkillIndex) === 1) finalArchetype = 'ARCHITECT';
+      if (winnerArch === 'MYSTIC' && parseInt(winnerSkillIndex) === 1) finalArchetype = 'SEEKER';
+      if (winnerArch === 'ACTIVE_NODE' && parseInt(winnerSkillIndex) === 1) finalArchetype = 'ALCHEMIST';
+
+      const skillName = SKILL_MAP[finalArchetype]?.[parseInt(winnerSkillIndex)] || "Unknown Protocol";
+
+      const finalProfile = {
+          ...profile,
+          finalArchetype: finalArchetype,
+          finalSkill: skillName
+      };
+
+      setTimeout(() => onComplete(finalProfile), 200); // Fast transition
   };
 
   const handleBackStep = () => {
       playCosmicClick();
-      if (step === 0) {
-          onBack(); // Exit if at start
+      stopAudio();
+      if (phase === 1 && step === 0) {
+          onBack(); 
+      } else if (phase === 2 && step === 0) {
+          setPhase(1);
+          setStep(ARCHETYPE_QUESTIONS.length - 1);
       } else {
           setStep(prev => prev - 1);
-          // Revert profile score logic would be complex here without history tracking, 
-          // simplified to just stepping back for UI correction.
       }
   };
 
+  const currentQ = phase === 1 ? ARCHETYPE_QUESTIONS[step] : SKILL_QUESTIONS[step];
+
   return (
     <div className="relative h-screen w-full overflow-hidden bg-black text-white flex items-center justify-center">
-      
-      {/* 1. BACKGROUND */}
       <div className="absolute inset-0 bg-black/80 pointer-events-none z-0"></div>
 
-      {/* 2. CENTER UI */}
       <div className="relative z-20 w-full max-w-xl px-4 animate-scaleIn">
-                 
-         {/* GLASS CARD */}
-         <div className="bg-black/60 backdrop-blur-2xl border border-cyan-900/50 rounded-3xl p-8 md:p-12 shadow-[0_0_80px_rgba(0,255,255,0.1)] relative overflow-hidden">
+         <div className="bg-black/60 backdrop-blur-2xl border border-cyan-900/50 rounded-3xl p-8 md:p-12 shadow-[0_0_80px_rgba(0,255,255,0.1)] relative overflow-hidden transition-all duration-300">
              
              {/* Header */}
              <div className="flex justify-between items-center mb-8 border-b border-white/10 pb-4">
@@ -269,25 +422,29 @@ export const NeuralInit: React.FC<NeuralInitProps> = ({ userName, onComplete, on
                  </button>
                  
                  <div className="flex items-center gap-2 text-cyan-500 font-mono text-xs tracking-widest">
-                     {audioLoading ? <Loader2 className="w-4 h-4 animate-spin"/> : <Volume2 className={`w-4 h-4 ${isSpeaking ? 'animate-pulse' : ''}`}/>}
-                     {audioLoading ? 'SYNCING...' : isSpeaking ? 'TRANSMITTING...' : 'AWAITING INPUT'}
+                     <Volume2 className={`w-4 h-4 ${isSpeaking ? 'animate-pulse text-cyan-400' : 'text-gray-600'}`}/>
+                     {isSpeaking ? 'TRANSMITTING...' : phase === 1 ? 'CALIBRATING CORE' : 'ASSIGNING SKILL'}
                  </div>
-                 <span className="text-amber-500 font-mono text-xs">{step + 1} / {QUESTIONS.length}</span>
+                 
+                 <div className="flex gap-1">
+                    {[...Array(3)].map((_, i) => (
+                        <div key={i} className={`w-1 h-1 rounded-full ${i < (step % 3) + 1 ? 'bg-cyan-500' : 'bg-gray-800'}`}></div>
+                    ))}
+                 </div>
              </div>
 
-             {/* Question Text - UPDATED FOR READABILITY */}
+             {/* Question Text */}
              <h3 className="text-xl md:text-2xl font-reading tracking-wide text-white leading-relaxed mb-10 text-center min-h-[100px] flex items-center justify-center animate-fadeIn">
-                 {QUESTIONS[step].text}
+                 {currentQ.text}
              </h3>
 
              {/* Options */}
-             <div className={`space-y-4 transition-all duration-300 ${audioLoading || isSpeaking ? 'opacity-50 grayscale cursor-not-allowed' : 'opacity-100'}`}>
-                 {QUESTIONS[step].options.map((opt, i) => (
+             <div className="space-y-4">
+                 {currentQ.options.map((opt: any, i: number) => (
                      <button 
                         key={i}
                         onClick={() => handleAnswer(opt)}
-                        disabled={audioLoading || isSpeaking}
-                        className="w-full text-left p-5 bg-white/5 border border-white/10 rounded-xl hover:bg-cyan-900/20 hover:border-cyan-500 transition-all group flex items-center gap-4 relative overflow-hidden disabled:pointer-events-none"
+                        className="w-full text-left p-5 bg-white/5 border border-white/10 rounded-xl hover:bg-cyan-900/20 hover:border-cyan-500 transition-all group flex items-center gap-4 relative overflow-hidden active:scale-[0.98] duration-100"
                      >
                          <div className="absolute inset-0 bg-cyan-500/10 translate-x-[-100%] group-hover:translate-x-0 transition-transform duration-500"></div>
                          <span className="text-2xl relative z-10">{opt.icon}</span>
@@ -299,13 +456,6 @@ export const NeuralInit: React.FC<NeuralInitProps> = ({ userName, onComplete, on
 
              {/* Progress Bar */}
              <div className="absolute bottom-0 left-0 h-1 bg-gradient-to-r from-cyan-900 via-cyan-500 to-cyan-900 transition-all duration-500" style={{ width: `${scanProgress}%` }}></div>
-             
-             {/* Lock Indicator */}
-             {(audioLoading || isSpeaking) && (
-                <div className="absolute top-4 right-4 text-[10px] text-red-500 font-bold uppercase tracking-widest animate-pulse border border-red-900 px-2 py-1 rounded bg-black/50">
-                    {audioLoading ? 'Buffering...' : 'Voice Active'}
-                </div>
-             )}
          </div>
       </div>
     </div>

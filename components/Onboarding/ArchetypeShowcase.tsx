@@ -9,8 +9,6 @@ interface ArchetypeShowcaseProps {
     viewMode?: 'onboarding' | 'dashboard';
 }
 
-// --- DATA STRUCTURES ---
-
 const ARCHETYPES_PREVIEW = [
     {
         id: 'SCIENTIST', 
@@ -39,30 +37,29 @@ const ARCHETYPES_PREVIEW = [
     {
         id: 'ARCHITECT', 
         title: 'The Architect', 
-        icon: <Anchor className="w-8 h-8 text-blue-400" />, 
-        desc: "Building order from the chaos of entropy. Constructing systems that last.",
+        icon: <Anchor className="w-8 h-8 text-[#FF0055]" />, 
+        desc: "Building order from the chaos of entropy. Constructing structural systems that last.",
         skills: ["Blueprint Drop", "Foundation", "Structure"],
-        color: "blue" 
+        color: "rose" 
     },
     {
         id: 'MYSTIC', 
         title: 'The Mystic', 
-        icon: <Sparkles className="w-8 h-8 text-indigo-400" />, 
+        icon: <Sparkles className="w-8 h-8 text-[#FFD700]" />, 
         desc: "Direct connection to the infinite Source. Bypassing the intellect for pure resonance.",
         skills: ["Resonance Wave", "Faith Protocol", "Vision"],
-        color: "indigo" 
+        color: "amber" 
     },
     {
         id: 'ALCHEMIST', 
         title: 'The Alchemist', 
         icon: <Scroll className="w-8 h-8 text-green-400" />, 
-        desc: "Transmutation of the self and reality. Turning lead into gold through internal optimization.",
+        desc: "Transmutation of self and reality. Internal optimization to change external data.",
         skills: ["Purify", "Vitality", "Synthesis"],
         color: "green"
     }
 ];
 
-// UPDATED: Skills now have descriptions
 const SKILL_DETAILS: Record<string, { name: string; desc: string }[]> = {
     'SCIENTIST': [
         { name: 'Quantum Logic', desc: 'Accelerates processing speed for complex calculations using multi-state variables.' },
@@ -206,8 +203,15 @@ export const ArchetypeShowcase: React.FC<ArchetypeShowcaseProps> = ({ onContinue
                             ) : (
                                 /* --- SELECTION SCREEN --- */
                                 <>
-                                    <p className="text-sm text-gray-400 mb-6 font-reading">
-                                        To bypass the standard calibration sequence, you must manually select a starting neural skill.
+                                    {/* Description added to the modal as requested */}
+                                    <div className="mb-6 p-4 bg-white/5 rounded-xl border border-white/5">
+                                        <p className="text-gray-300 font-reading text-sm italic leading-relaxed">
+                                            "{activeArch.desc}"
+                                        </p>
+                                    </div>
+
+                                    <p className="text-xs text-gray-500 mb-4 font-mono uppercase tracking-wide">
+                                        Select Initial Skill Loadout:
                                     </p>
 
                                     <div className="space-y-3 relative">
@@ -228,7 +232,6 @@ export const ArchetypeShowcase: React.FC<ArchetypeShowcaseProps> = ({ onContinue
                                                     {selectedSkill === skill.name && <CheckCircle className={`w-4 h-4 text-${activeArch.color}-400 animate-scaleIn`} />}
                                                 </button>
 
-                                                {/* INLINE DETAIL (VISIBLE ON ALL DEVICES NOW) */}
                                                 {selectedSkill === skill.name && (
                                                     <div className="mt-2 p-3 bg-white/5 rounded-lg border-l-2 border-gray-600 animate-fadeIn">
                                                         <p className="text-[10px] text-gray-300 font-reading italic">"{skill.desc}"</p>
@@ -254,8 +257,6 @@ export const ArchetypeShowcase: React.FC<ArchetypeShowcaseProps> = ({ onContinue
             )}
 
             <div className="w-full max-w-7xl mx-auto space-y-12 animate-fadeIn px-6 py-12 flex flex-col items-center">
-                
-                {/* --- HEADER --- */}
                 <div className="text-center space-y-4 pt-8 max-w-3xl">
                     <h2 className="text-4xl md:text-6xl font-tech text-white uppercase tracking-tighter text-shadow-glow">
                         Cognitive Configuration
@@ -266,7 +267,6 @@ export const ArchetypeShowcase: React.FC<ArchetypeShowcaseProps> = ({ onContinue
                     </p>
                 </div>
 
-                {/* --- PRIMARY DIRECTIVE (Moved to Top) --- */}
                 {viewMode === 'onboarding' && (
                     <div className="w-full max-w-md relative group">
                         <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 via-purple-500 to-orange-500 rounded-full blur opacity-25 group-hover:opacity-75 transition duration-1000 group-hover:duration-200"></div>
@@ -280,15 +280,11 @@ export const ArchetypeShowcase: React.FC<ArchetypeShowcaseProps> = ({ onContinue
                                 <ArrowRight className="w-6 h-6" />
                             </div>
                         </button>
-                        <p className="text-center text-[10px] text-gray-500 mt-3 font-mono tracking-widest uppercase">
-                            Recommended for first-time users
-                        </p>
                     </div>
                 )}
 
                 <div className="w-full h-px bg-gradient-to-r from-transparent via-gray-800 to-transparent my-8"></div>
 
-                {/* --- GRID (Manual Override) --- */}
                 <div className="w-full">
                     <div className="flex items-center justify-center gap-4 mb-8 opacity-70">
                         <div className="h-px w-12 bg-gray-700"></div>
@@ -303,7 +299,6 @@ export const ArchetypeShowcase: React.FC<ArchetypeShowcaseProps> = ({ onContinue
                                 onClick={() => handleCardClick(arch.id)}
                                 className={`bg-black/40 border border-white/10 rounded-3xl p-8 hover:border-${arch.color}-500/50 hover:bg-white/5 transition-all group relative overflow-hidden cursor-pointer active:scale-[0.98]`}
                             >
-                                {/* Hover Glow */}
                                 <div className={`absolute inset-0 bg-gradient-to-br from-${arch.color}-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500`}></div>
 
                                 <div className="relative z-10">

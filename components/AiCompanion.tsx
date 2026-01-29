@@ -225,7 +225,7 @@ export const AiCompanion: React.FC<AiCompanionProps> = ({ path, isPremium, queri
             audio.onended = () => { setAudioPlaying(null); setProcessingAudio(false); if(audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current); };
             audio.onerror = (e) => { console.error("Audio error", e); setAudioPlaying(null); setProcessingAudio(false); };
             try { await audio.play(); audioRef.current = audio; } catch (playErr) { console.warn("Autoplay blocked", playErr); setAudioPlaying(null); setProcessingAudio(false); }
-        } else { setAudioPlaying(null); }
+        } else { setAudioPlaying(null); setProcessingAudio(false); }
     } catch (e) { console.error("Playback failed", e); setAudioPlaying(null); setProcessingAudio(false); }
   };
 
@@ -250,6 +250,9 @@ export const AiCompanion: React.FC<AiCompanionProps> = ({ path, isPremium, queri
     const textToSend = overrideText || input;
     if (!textToSend.trim() || isLoading) return;
     
+    // Stop any current audio if user interrupts
+    stopAudio();
+
     // Check Lock: Only block if using Input, not if using Menu Prompt (overrideText)
     if (!overrideText && isInputLocked) return;
 
@@ -287,7 +290,7 @@ export const AiCompanion: React.FC<AiCompanionProps> = ({ path, isPremium, queri
     recognition.continuous = false;
     recognition.interimResults = false;
     recognition.lang = language; 
-    recognition.onstart = () => setIsListening(true);
+    recognition.onstart = () => { stopAudio(); setIsListening(true); }; // Stop audio when mic starts
     recognition.onend = () => setIsListening(false);
     recognition.onerror = () => setIsListening(false);
     recognition.onresult = (event: any) => {
@@ -444,4 +447,3 @@ export const AiCompanion: React.FC<AiCompanionProps> = ({ path, isPremium, queri
     </div>
   );
 };
-    

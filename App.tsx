@@ -6,15 +6,16 @@ import { GlobalBackgroundAudio } from './components/GlobalBackgroundAudio';
 import { LanguageProvider } from './contexts/LanguageContext';
 import { CosmicBackground } from './components/CosmicBackground';
 
-// Onboarding Components - Explicit Relative Paths
+// Onboarding Components
 import { LoginPortal } from './components/Onboarding/LoginPortal';
-import { ArchetypeShowcase } from './components/Onboarding/ArchetypeShowcase'; // New Component
+import { ArchetypeShowcase } from './components/Onboarding/ArchetypeShowcase'; 
 import { NeuralInit } from './components/Onboarding/NeuralInit';
 import { ArchetypeReveal } from './components/Onboarding/ArchetypeReveal';
 import { NeuronBuilder } from './components/Onboarding/NeuronBuilder';
 import { TransitionScreen } from './components/TransitionScreen';
+import { WarpScreen } from './components/WarpScreen';
 
-type OnboardingStep = 'PORTAL' | 'SHOWCASE' | 'INIT' | 'REVEAL' | 'BUILDER' | 'COMPLETE';
+type OnboardingStep = 'PORTAL' | 'SHOWCASE' | 'INIT' | 'REVEAL' | 'WARP' | 'BUILDER' | 'COMPLETE';
 
 const AppContent: React.FC = () => {
   const [path, setPath] = useState<UserPath>(UserPath.NONE);
@@ -27,13 +28,14 @@ const AppContent: React.FC = () => {
   
   // Onboarding State
   const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>('PORTAL');
-  const [isTransitioning, setIsTransitioning] = useState(false); // Controls the Transition Screen
-  const [nextStep, setNextStep] = useState<OnboardingStep | null>(null); // Queues the next step
+  const [isTransitioning, setIsTransitioning] = useState(false); 
+  const [nextStep, setNextStep] = useState<OnboardingStep | null>(null); 
   const [transitionTitle, setTransitionTitle] = useState("IDENTITY VERIFICATION");
   const [transitionSteps, setTransitionSteps] = useState<string[]>([]);
 
   const [calibrationProfile, setCalibrationProfile] = useState<any>(null);
   const [archetypeKey, setArchetypeKey] = useState<string>('ACTIVE_NODE'); 
+  const [warpColor, setWarpColor] = useState<string>('cyan');
 
   // --- ROOT ACCESS OVERRIDE ---
   const effectiveIsPremium = isPremium || isAuthor;
@@ -76,7 +78,6 @@ const AppContent: React.FC = () => {
             setPath(savedPath);
             setOnboardingStep('COMPLETE');
          } else {
-             // If logged in but path not set, go to showcase/init
              setOnboardingStep('SHOWCASE');
          }
       }
@@ -104,7 +105,6 @@ const AppContent: React.FC = () => {
   };
 
   const handleGoBack = () => {
-      // Logic for Back Button across different states
       if (onboardingStep === 'SHOWCASE') {
           handleLogout();
       } else if (onboardingStep === 'INIT') {
@@ -112,7 +112,6 @@ const AppContent: React.FC = () => {
       } else if (onboardingStep === 'REVEAL') {
           setOnboardingStep('INIT');
       } else if (onboardingStep === 'BUILDER') {
-          // If already set up (editing), go back to dashboard, else go back to reveal
           if (path !== UserPath.NONE) {
               setOnboardingStep('COMPLETE');
           } else {
@@ -134,7 +133,6 @@ const AppContent: React.FC = () => {
     const db = getUserDB();
     const existingRecord = db[profile.email];
 
-    // Persist Login
     if (existingRecord) {
         setQueriesUsed(existingRecord.queriesUsed);
         setIsPremium(existingRecord.isPremium);
@@ -151,12 +149,9 @@ const AppContent: React.FC = () => {
     localStorage.setItem('gb_auth_token', `neural_token_${profile.email}_${Date.now()}`);
     setIsAuthenticated(true);
 
-    // CRITICAL: If Author, skip onboarding. If User, go to Showcase.
     if (email === 'architect@source.code' || email === 'admin@godsbrain.com' || email === 'phoenix') {
-        // Author Bypass
         handleAuthorLogin(); 
     } else {
-        // Standard User Flow
         triggerTransition('SHOWCASE', "IDENTITY VERIFICATION", [
             "Establishing secure neural uplink...",
             "INITIALIZING SECURE GATEWAY...",
@@ -167,7 +162,6 @@ const AppContent: React.FC = () => {
   };
   
   const handleShowcaseContinue = () => {
-      // Move from Showcase to Questionnaire
       triggerTransition('INIT', "INITIALIZING CALIBRATION", [
           "Loading psychometric matrix...",
           "Preparing neural baseline...",
@@ -176,23 +170,19 @@ const AppContent: React.FC = () => {
   };
 
   const handleManualArchetypeSelect = (id: string, skill: string) => {
-      // 1. Map ID to Path
       let selectedPath = UserPath.BLENDED;
       if (['SCIENTIST', 'ARCHITECT'].includes(id)) selectedPath = UserPath.SCIENTIFIC;
       if (['MYSTIC', 'SEEKER'].includes(id)) selectedPath = UserPath.RELIGIOUS;
       
-      // 2. Set Path & Archetype
       setPath(selectedPath);
       localStorage.setItem('gb_path', selectedPath);
       setArchetypeKey(id);
 
-      // 3. Update Profile
       handleUpdateProfile({ 
           archetype: id, 
           startingSkill: skill 
       });
 
-      // 4. Trigger Transition directly to Builder (skipping calibration)
       triggerTransition('BUILDER', `INITIALIZING ${id} PROTOCOL`, [
           `Allocating resources for ${skill}...`,
           "Bypassing standard calibration...",
@@ -225,9 +215,7 @@ const AppContent: React.FC = () => {
 
   const handleCalibrationComplete = (profile: any) => {
       setCalibrationProfile(profile);
-      const keys = Object.keys(profile);
-      const winnerKey = keys.length > 0 ? keys.reduce((a, b) => profile[a] > profile[b] ? a : b) : 'ACTIVE_NODE';
-      setArchetypeKey(winnerKey);
+      setArchetypeKey(profile.finalArchetype || 'ACTIVE_NODE');
       
       // TRIGGER TRANSITION TO REVEAL
       triggerTransition('REVEAL', "ANALYZING NEURAL ARCHITECTURE", [
@@ -238,22 +226,21 @@ const AppContent: React.FC = () => {
       ]);
   };
 
-  const handleAcceptArchetype = (selectedPath: UserPath) => {
+  const handleAcceptArchetype = (selectedPath: UserPath, color: string) => {
     setPath(selectedPath);
     localStorage.setItem('gb_path', selectedPath);
+    setWarpColor(color);
     
-    // TRIGGER TRANSITION TO BUILDER
-    triggerTransition('BUILDER', "INITIATING BIO-FORGE", [
-        "Loading biological assets...",
-        "Allocating resources...",
-        "Forge ready."
-    ]);
+    // GO TO WARP SCREEN
+    setOnboardingStep('WARP');
+  };
+
+  const handleWarpComplete = () => {
+      setOnboardingStep('BUILDER');
   };
 
   const handleBuilderComplete = (avatarUrl: string) => {
       handleUpdateProfile({ avatar: avatarUrl });
-      
-      // TRIGGER TRANSITION TO DASHBOARD
       triggerTransition('COMPLETE', "SYSTEM UPLINK", [
           "Finalizing avatar integration...",
           "Connecting to God Brain Mainframe...",
@@ -280,23 +267,19 @@ const AppContent: React.FC = () => {
         avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=Phoenix'
     };
     
-    // 1. Set State
     setIsAuthor(true);
     setUserProfile(authorProfile);
     setIsAuthenticated(true);
-    setIsPremium(true); // Supreme Access
+    setIsPremium(true); 
     
-    // 2. Set Default Path (Blended/Supreme)
     setPath(UserPath.BLENDED);
     localStorage.setItem('gb_path', UserPath.BLENDED);
     
-    // 3. Persist
     const db = getUserDB();
     db[authorProfile.email] = { profile: authorProfile, queriesUsed: 0, isPremium: true, lastLogin: Date.now() };
     saveUserDB(db);
     localStorage.setItem('gb_auth_token', `neural_token_${authorProfile.email}_${Date.now()}`);
 
-    // 4. TRIGGER BYPASS TRANSITION -> STRAIGHT TO COMPLETE
     triggerTransition('COMPLETE', "PHOENIX PROTOCOL RECOGNIZED", [
         "Identity Confirmed: SUPREME NODE.",
         "Bypassing Calibration Sequence...",
@@ -316,7 +299,6 @@ const AppContent: React.FC = () => {
     localStorage.removeItem('gb_auth_token');
   };
 
-  // Re-enter Builder from Dashboard
   const handleEditNeuron = () => {
       triggerTransition('BUILDER', "RE-INITIALIZING BIO-FORGE", [
           "Loading current configuration...",
@@ -330,11 +312,9 @@ const AppContent: React.FC = () => {
   return (
     <div className="h-screen w-screen text-[#e0f2fe] font-sans relative overflow-hidden bg-transparent">
       
-      {/* COSMIC VISUAL ENGINE */}
       <CosmicBackground path={path} />
       <GlobalBackgroundAudio autoPlay={true} />
       
-      {/* TRANSITION OVERLAY */}
       {isTransitioning && (
           <TransitionScreen 
               onComplete={handleTransitionComplete} 
@@ -343,7 +323,10 @@ const AppContent: React.FC = () => {
           />
       )}
 
-      {/* MAIN CONTENT WRAPPER - RELATIVE to allow absolute children scrolling */}
+      {onboardingStep === 'WARP' && (
+          <WarpScreen color={warpColor} onComplete={handleWarpComplete} />
+      )}
+
       <div className="relative z-10 h-full w-full overflow-hidden">
         {onboardingStep === 'PORTAL' && (
             <LoginPortal onLoginSuccess={handleLoginSuccess} />
@@ -378,6 +361,7 @@ const AppContent: React.FC = () => {
                 onComplete={handleBuilderComplete} 
                 onUpdateProfile={handleUpdateProfile}
                 onBack={handleGoBack}
+                isUnlocked={effectiveIsPremium}
             />
         )}
 

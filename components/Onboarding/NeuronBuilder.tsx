@@ -1,7 +1,7 @@
 
-import React, { useRef, useEffect, useState } from 'react';
-import { playNeuralLink, playCosmicClick, playError, playMenuSelect } from '../../utils/sfx';
-import { ArrowLeft, RefreshCw, Dna, Lock, Zap, Activity, CircleDashed, Sun, Gauge, Network, RotateCw, ZoomIn } from 'lucide-react';
+import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
+import { playNeuralLink, playCosmicClick, playError, playMenuSelect, playDataOpen } from '../../utils/sfx';
+import { ArrowLeft, Dna, Lock, Zap, Activity, Sun, Network, RotateCw, ZoomIn, ZoomOut, Layers, Eye, Maximize2, Minimize2, Triangle, Waves, Grip, CircleDashed, Wind, Dice5, RefreshCw, Compass } from 'lucide-react';
 import { UserProfile } from '../../types';
 
 interface NeuronBuilderProps {
@@ -9,6 +9,7 @@ interface NeuronBuilderProps {
   onComplete: (avatarUrl: string) => void;
   onUpdateProfile?: (updates: Partial<UserProfile>) => void;
   onBack: () => void;
+  isUnlocked: boolean; 
 }
 
 const DNA_NAMES = [
@@ -16,530 +17,551 @@ const DNA_NAMES = [
     "Soma-Alpha", "Glial-9", "Myelin-Z", "Vesicle-Core", "Receptor-K", "Node-Zero", "Omni-Cell"
 ];
 
-const COLORS = [
-    { hex: '#FFFFFF', name: 'Quartz White', locked: false },
-    { hex: '#FF4500', name: 'Mars Red', locked: false },
-    { hex: '#10B981', name: 'Gaia Green', locked: false },
-    { hex: '#00FFFF', name: 'Neon Cyan', locked: false },
-    { hex: '#F59E0B', name: 'Solar Amber', locked: false },
-    { hex: '#000000', name: 'Void Black', locked: true, type: 'PREMIUM' },
-    { hex: '#E2E8F0', name: 'Platinum', locked: true, type: 'PREMIUM' },
-    { hex: '#D946EF', name: 'Plasma Pink', locked: true, type: 'PREMIUM' }
-];
+type TextureStyle = 'POROUS' | 'BIO_SYNAPSE' | 'CRYSTALLINE';
+type SpineStyle = 'THORNS' | 'BULBS' | 'THREADS';
 
-export const NeuronBuilder: React.FC<NeuronBuilderProps> = ({ archetype, onComplete, onUpdateProfile, onBack }) => {
+export const NeuronBuilder: React.FC<NeuronBuilderProps> = ({ archetype, onComplete, onUpdateProfile, onBack, isUnlocked }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   
-  // --- STATE: IDENTITY ---
-  const [neuronName, setNeuronName] = useState("Proto-Node");
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generationProgress, setGenerationProgress] = useState(0);
-
-  // --- STATE: SOMA CONFIG ---
-  const [somaLum, setSomaLum] = useState(80); // Bioluminescence (60-120 range effectively)
-  const [rhythm, setRhythm] = useState<'ALPHA' | 'GAMMA'>('ALPHA'); // Pulse speed
-
-  // --- STATE: DENDRITES ---
-  const [armLength, setArmLength] = useState(30); // 0-50 (Hard cap for Level 1)
-  const [armColor, setArmColor] = useState<string>('#FFFFFF'); // Will set to default on mount
-
-  // --- STATE: VIEWPORT ---
-  const [rotation, setRotation] = useState(0);
-  
-  // --- THEME ENGINE ---
   const getTheme = () => {
       const base = {
-          SCIENTIST: { color: '#00FFFF', label: 'CLASS: THE SCIENTIST', id: 'SCI' },
-          MYSTIC: { color: '#A855F7', label: 'CLASS: THE MYSTIC', id: 'MYS' },
-          ACTIVE_NODE: { color: '#FF4500', label: 'CLASS: ACTIVE NODE', id: 'ACT' },
-          ARCHITECT: { color: '#F43F5E', label: 'CLASS: THE ARCHITECT', id: 'ARC' }, // Rose
-          SEEKER: { color: '#F97316', label: 'CLASS: THE SEEKER', id: 'SEE' },
-          ALCHEMIST: { color: '#10B981', label: 'CLASS: THE ALCHEMIST', id: 'ALC' }
+          SCIENTIST: { color: '#00FFFF', label: 'THE SCIENTIST' },
+          MYSTIC: { color: '#A855F7', label: 'THE MYSTIC' },
+          ACTIVE_NODE: { color: '#FF4500', label: 'ACTIVE NODE' },
+          ARCHITECT: { color: '#F43F5E', label: 'THE ARCHITECT' }, 
+          SEEKER: { color: '#F97316', label: 'THE SEEKER' },
+          ALCHEMIST: { color: '#10B981', label: 'THE ALCHEMIST' }
       };
       return base[archetype as keyof typeof base] || base.ACTIVE_NODE;
   };
   const theme = getTheme();
 
-  // Set initial arm color to white (default) on mount
-  useEffect(() => {
-      setArmColor(COLORS[0].hex);
-  }, []);
+  const PALETTE = useMemo(() => {
+      const adjust = (hex: string, amt: number) => {
+          let usePound = hex[0] === "#";
+          hex = usePound ? hex.slice(1) : hex;
+          let num = parseInt(hex, 16);
+          let r = Math.min(255, Math.max(0, (num >> 16) + amt));
+          let b = Math.min(255, Math.max(0, ((num >> 8) & 0x00FF) + amt));
+          let g = Math.min(255, Math.max(0, (num & 0x0000FF) + amt));
+          return (usePound ? "#" : "") + (g | (b << 8) | (r << 16)).toString(16).padStart(6, '0');
+      };
 
-  // --- LOGIC HANDLERS ---
+      return [
+          { hex: adjust(theme.color, -60), name: 'Obsidian', locked: false },
+          { hex: adjust(theme.color, -30), name: 'Deep Tissue', locked: false },
+          { hex: theme.color, name: 'Core Resonance', locked: false },
+          { hex: adjust(theme.color, 50), name: 'Luminous', locked: false },
+          { hex: '#FFFFFF', name: 'Supernova', locked: true },
+          { hex: adjust(theme.color, 120), name: 'Neon Apex', locked: true }, 
+      ];
+  }, [theme.color]);
+
+  // --- STATE: IDENTITY ---
+  const [neuronName, setNeuronName] = useState("Proto-Node");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState(0);
+
+  // --- STATE: MORPHOLOGY (Calibrated Defaults) ---
+  const [somaSize, setSomaSize] = useState(25); 
+  const [aspectRatio, setAspectRatio] = useState(50); 
+  const [bodyDistortion, setBodyDistortion] = useState(15); 
+  const [nucleusSize, setNucleusSize] = useState(15); 
+  const [armLength, setArmLength] = useState(15); // Default shorter
+  const [armThickness, setArmThickness] = useState(35); // Default thicker
+  
+  const [somaLum, setSomaLum] = useState(20); 
+  const [textureDensity, setTextureDensity] = useState(30); 
+  const [textureStyle, setTextureStyle] = useState<TextureStyle>('POROUS');
+  const [somaColor, setSomaColor] = useState<string>(theme.color); 
+  const [nucleusColor, setNucleusColor] = useState<string>(theme.color); 
+
+  const [waviness, setWaviness] = useState(15); // Always moves
+  const [spikeFactor, setSpikeFactor] = useState(0); 
+  const [spikeAngle, setSpikeAngle] = useState(50); 
+  const [spineStyle, setSpineStyle] = useState<SpineStyle>('THORNS');
+  
+  const [spookySpeed, setSpookySpeed] = useState(8); 
+  const [pulseIntensity, setPulseIntensity] = useState(10); 
+  const [trailLevel, setTrailLevel] = useState(5); 
+  
+  const rotationRef = useRef(0); 
+  const [zoom, setZoom] = useState(1.2); 
+  const isDraggingRef = useRef(false);
+  const lastMouseXRef = useRef(0);
+  const touchDistRef = useRef<number | null>(null);
+  const [activeTab, setActiveTab] = useState<'STRUCTURE' | 'SURFACE' | 'MOTION' | 'MUTATION'>('STRUCTURE');
+
+  useEffect(() => {
+      setSomaColor(theme.color);
+      setNucleusColor(theme.color);
+  }, [archetype, theme.color]);
+
   const handleRandomName = () => {
       playCosmicClick();
-      const random = DNA_NAMES[Math.floor(Math.random() * DNA_NAMES.length)];
-      const suffix = Math.floor(Math.random() * 999);
-      setNeuronName(`${random}-${suffix}`);
+      setNeuronName(`${DNA_NAMES[Math.floor(Math.random() * DNA_NAMES.length)]}-${Math.floor(Math.random() * 999)}`);
   };
 
-  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>, setter: (v: number) => void) => {
-      const val = parseInt(e.target.value);
-      // Visual constraint logic is handled in the UI rendering (max=50)
-      playMenuSelect();
+  const handleRandomizeAll = () => {
+    playDataOpen();
+    const rand = (max: number) => Math.floor(Math.random() * max);
+    setSomaSize(rand(isUnlocked ? 100 : 25));
+    setAspectRatio(rand(100));
+    setBodyDistortion(rand(isUnlocked ? 100 : 25));
+    setNucleusSize(rand(isUnlocked ? 100 : 25));
+    setArmLength(rand(isUnlocked ? 100 : 25));
+    setArmThickness(rand(isUnlocked ? 100 : 25));
+    setSomaLum(rand(isUnlocked ? 100 : 25));
+    setTextureDensity(rand(isUnlocked ? 100 : 25));
+    if (isUnlocked) {
+        setSpikeFactor(rand(100));
+        setSpikeAngle(rand(100));
+        setSpookySpeed(rand(100));
+        setPulseIntensity(rand(100));
+        setTrailLevel(rand(100));
+        setWaviness(Math.max(10, rand(100))); // Randomize but never zero
+    }
+  };
+
+  const handleResetToClass = () => {
+    playMenuSelect();
+    setSomaSize(25); setAspectRatio(50); setBodyDistortion(15); setNucleusSize(15);
+    setSomaLum(20); setTextureDensity(30); setTextureStyle('POROUS'); 
+    setSomaColor(theme.color); setNucleusColor(theme.color); setArmLength(15);
+    setArmThickness(35); setWaviness(15); setSpikeFactor(0); setSpikeAngle(50);
+    setSpookySpeed(8); setPulseIntensity(10); setTrailLevel(5);
+  };
+
+  const handleSliderChange = useCallback((v: number, setter: (v: number) => void, cap: number = 100, isHardLocked: boolean = false) => {
+      if (isHardLocked && !isUnlocked && v > 0) {
+          playError();
+          return;
+      }
+      const val = !isUnlocked && v > cap ? cap : v;
       setter(val);
-  };
+  }, [isUnlocked]);
 
-  const handleColorSelect = (c: typeof COLORS[0]) => {
-      if (c.locked) {
-          playError();
-          // Haptic
-          if (navigator.vibrate) navigator.vibrate(100);
-          return;
-      }
+  const handleColorSelect = (hex: string, type: 'SOMA' | 'NUCLEUS', locked: boolean) => {
+      if (locked && !isUnlocked) { playError(); return; }
       playCosmicClick();
-      setArmColor(c.hex);
+      if (type === 'SOMA') setSomaColor(hex);
+      if (type === 'NUCLEUS') setNucleusColor(hex);
   };
 
-  const handleRhythmSelect = (type: 'ALPHA' | 'GAMMA') => {
-      if (type === 'GAMMA') {
-          playError();
-          return;
-      }
-      playCosmicClick();
-      setRhythm(type);
-  };
+  // --- INPUT HANDLERS ---
+  useEffect(() => {
+      const el = containerRef.current;
+      if (!el) return;
 
-  const handleFinish = () => {
-      playNeuralLink();
-      setIsGenerating(true);
-      
-      // Update Name in Global State
-      if (onUpdateProfile) {
-          onUpdateProfile({ name: neuronName });
-      }
-
-      // Simulate Genetic Weaving
-      let p = 0;
-      const interval = setInterval(() => {
-          p += 4; // Faster generation
-          setGenerationProgress(p);
-          if (p >= 100) {
-              clearInterval(interval);
-              if (canvasRef.current) {
-                  // Capture the organism
-                  const dataUrl = canvasRef.current.toDataURL();
-                  onComplete(dataUrl);
-              }
+      const handleMouseDown = (e: MouseEvent) => { isDraggingRef.current = true; lastMouseXRef.current = e.clientX; };
+      const handleMouseMove = (e: MouseEvent) => {
+          if (isDraggingRef.current) {
+              const delta = e.clientX - lastMouseXRef.current;
+              rotationRef.current += delta * 0.5;
+              lastMouseXRef.current = e.clientX;
           }
-      }, 50);
-  };
+      };
+      const handleMouseUp = () => { isDraggingRef.current = false; };
 
-  // --- RENDER LOOP (2.5D PROTO-NEURON ENGINE) ---
+      const handleTouchStart = (e: TouchEvent) => { 
+          if (e.touches.length === 1) {
+              isDraggingRef.current = true; lastMouseXRef.current = e.touches[0].clientX;
+          } else if (e.touches.length === 2) {
+              touchDistRef.current = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+          }
+      };
+      const handleTouchMove = (e: TouchEvent) => {
+          if (e.touches.length === 1 && isDraggingRef.current) {
+              const delta = e.touches[0].clientX - lastMouseXRef.current;
+              rotationRef.current += delta * 0.5; lastMouseXRef.current = e.touches[0].clientX;
+          } else if (e.touches.length === 2 && touchDistRef.current !== null) {
+              e.preventDefault();
+              const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+              setZoom(prev => Math.min(2.5, Math.max(0.5, prev + (d - touchDistRef.current!) * 0.005)));
+              touchDistRef.current = d;
+          }
+      };
+      const handleTouchEnd = () => { isDraggingRef.current = false; touchDistRef.current = null; };
+
+      el.addEventListener('mousedown', handleMouseDown);
+      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mouseup', handleMouseUp);
+      el.addEventListener('touchstart', handleTouchStart, { passive: false });
+      el.addEventListener('touchmove', handleTouchMove, { passive: false });
+      el.addEventListener('touchend', handleTouchEnd);
+      return () => {
+          el.removeEventListener('mousedown', handleMouseDown);
+          window.removeEventListener('mousemove', handleMouseMove);
+          window.removeEventListener('mouseup', handleMouseUp);
+          el.removeEventListener('touchstart', handleTouchStart);
+          el.removeEventListener('touchmove', handleTouchMove);
+          el.removeEventListener('touchend', handleTouchEnd);
+      };
+  }, []);
+
+  // --- RENDER ENGINE ---
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { alpha: true });
     if (!ctx) return;
 
-    // Responsive Canvas Resizing for Rotation
-    const resizeCanvas = () => {
-        // Set canvas resolution to match display size for sharpness
-        const parent = canvas.parentElement;
-        if(parent) {
-            canvas.width = parent.clientWidth;
-            canvas.height = parent.clientHeight;
-        }
-    };
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
+    const resize = () => { if(canvas.parentElement) { canvas.width = canvas.parentElement.clientWidth; canvas.height = canvas.parentElement.clientHeight; } };
+    window.addEventListener('resize', resize);
+    resize();
 
     let frameId: number;
     let time = 0;
 
     const render = () => {
-        time += rhythm === 'GAMMA' ? 0.15 : 0.05;
-        
-        // 1. Setup Canvas
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        const cx = canvas.width / 2;
-        const cy = canvas.height / 2;
-        
-        // 2. Pulse Math (Microtubule Resonance)
-        const pulseBase = Math.sin(time); 
-        const pulse = pulseBase * 0.05 + 1; // Scale factor 0.95 to 1.05
-        const glowIntensity = (somaLum / 100) * 30 + (pulseBase * 10);
+        time += 0.05;
+        const trailLimit = isUnlocked ? (trailLevel / 100 * 0.60) : (Math.min(trailLevel, 25) / 100 * 0.60);
+        const trailAlpha = 0.68 - trailLimit; 
 
-        // 3. Geometry Setup
-        ctx.save();
-        ctx.translate(cx, cy);
-        
-        // Scale Factor - Adjust slightly based on screen size so it fits
-        const scaleFactor = Math.min(canvas.width, canvas.height) / 400; 
-        ctx.scale(pulse * scaleFactor, pulse * scaleFactor);
-        
-        // --- DRAW DENDRITES (The Arms) ---
-        // Quad-polar structure (X shape)
-        const armCount = 4;
-        const baseLength = 60; 
-        const extension = armLength * 1.5; // Scale slider to pixels
-        const totalLength = baseLength + extension;
-
-        for (let i = 0; i < armCount; i++) {
-            // Calculate Angle with Rotation
-            // 45, 135, 225, 315 degrees + user rotation
-            const baseAngle = (Math.PI / 2) * i + (Math.PI / 4); 
-            const angle = baseAngle + (rotation * Math.PI / 180);
-
-            const ex = Math.cos(angle) * totalLength;
-            const ey = Math.sin(angle) * totalLength;
-
-            // Gradient: Soma Color (Center) -> Membrane Potential (Tip)
-            const grad = ctx.createLinearGradient(0, 0, ex, ey);
-            grad.addColorStop(0, theme.color); 
-            grad.addColorStop(0.4, theme.color); 
-            grad.addColorStop(1, armColor);
-
-            // Draw Arm
-            ctx.beginPath();
-            ctx.moveTo(0, 0);
-            
-            // Organic Curve (Wiggle)
-            // Control points wiggle slightly with time to simulate fluid suspension
-            const cp1x = (ex * 0.5) + Math.sin(time + i) * 5;
-            const cp1y = (ey * 0.5) + Math.cos(time + i) * 5;
-            
-            ctx.quadraticCurveTo(cp1x, cp1y, ex, ey);
-            
-            ctx.strokeStyle = grad;
-            ctx.lineWidth = 6 + (armLength * 0.05); // Thicker base
-            ctx.lineCap = 'round';
-            ctx.stroke();
-
-            // Terminal Bouton (The Glowing Tip)
-            ctx.beginPath();
-            ctx.arc(ex, ey, 5, 0, Math.PI * 2);
-            ctx.fillStyle = armColor;
-            ctx.shadowColor = armColor;
-            ctx.shadowBlur = 15;
-            ctx.fill();
-            ctx.shadowBlur = 0; // Reset
+        if (trailLimit > 0) {
+            ctx.fillStyle = `rgba(5, 5, 5, ${trailAlpha})`;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+        } else {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
 
-        // --- DRAW SOMA (The Core) ---
-        // Outer Membrane Glow
-        const somaGrad = ctx.createRadialGradient(0, 0, 10, 0, 0, 35);
-        somaGrad.addColorStop(0, '#FFFFFF'); // Hot white center
-        somaGrad.addColorStop(0.3, theme.color); // Archetype color body
-        somaGrad.addColorStop(1, 'transparent'); // Fade out
-
-        ctx.beginPath();
-        ctx.arc(0, 0, 35, 0, Math.PI * 2);
-        ctx.fillStyle = somaGrad;
+        const cx = canvas.width / 2;
+        const cy = canvas.height / 2;
+        const pulse = Math.sin(time) * 0.012 + 1; 
+        const heart = Math.sin(time * 3) * (pulseIntensity / 100 * 10); 
         
-        // Bioluminescence Effect
+        const activeSpooky = isUnlocked ? (spookySpeed / 100 * 0.25) : (Math.min(spookySpeed, 25) / 100 * 0.25);
+        rotationRef.current += activeSpooky; 
+
+        ctx.save();
+        ctx.translate(cx, cy);
+        const scaleFactor = (Math.min(canvas.width, canvas.height) / 450) * zoom; 
+        ctx.scale(pulse * scaleFactor, pulse * scaleFactor);
+        const currentRot = rotationRef.current * Math.PI / 180;
+
+        // --- 1. ARMS ---
+        const reachFac = isUnlocked ? (armLength / 100) : (Math.min(armLength, 25) / 100);
+        const armReach = 40 + (reachFac * 260); 
+        const sSizeVal = 40 + (somaSize / 100 * 40);
+        const startRad = sSizeVal * 0.85;
+        
+        const thickFac = isUnlocked ? (armThickness / 100) : (Math.min(armThickness, 50) / 100);
+        const lineWidth = (thickFac * 20) + 2; 
+
+        // Flow State: Never Zero Logic + Halved Max
+        const flowIntensity = ((waviness / 100) * 0.025) + 0.005;
+
+        for (let i = 0; i < 4; i++) {
+            const baseAng = (Math.PI / 2) * i + (Math.PI / 4) + currentRot;
+            const pts: {x: number, y: number}[] = [];
+            for(let j = 0; j <= 12; j++) {
+                const t = j / 12;
+                const d = startRad + (armReach * t);
+                const w = Math.sin((t * 6) + (time * 1.5)) * (flowIntensity * 100 * t); 
+                pts.push({ x: Math.cos(baseAng + w * 0.05) * d, y: Math.sin(baseAng + w * 0.05) * d });
+            }
+            ctx.beginPath(); ctx.moveTo(pts[0].x, pts[0].y);
+            for(let p of pts) ctx.lineTo(p.x, p.y);
+            ctx.lineCap = 'round'; ctx.lineJoin = 'round'; 
+            ctx.strokeStyle = somaColor; ctx.lineWidth = lineWidth; ctx.stroke();
+            ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = lineWidth * 0.3; ctx.stroke();
+
+            // Synaptic Spines
+            if (spikeFactor > 0) {
+                 ctx.beginPath();
+                 for(let j=2; j<pts.length-1; j+=3) {
+                     const p = pts[j];
+                     const dx = pts[j+1].x - p.x; const dy = pts[j+1].y - p.y;
+                     const armTangent = Math.atan2(dy, dx);
+                     const ang = armTangent + ((spikeAngle / 100 * 180) * Math.PI / 180);
+                     const lenMult = spineStyle === 'THREADS' ? 1.7 : 1.0;
+                     const len = ((spikeFactor / 100 * 20) + 4) * lenMult;
+                     const ex = p.x + Math.cos(ang)*len;
+                     const ey = p.y + Math.sin(ang)*len;
+                     
+                     ctx.moveTo(p.x, p.y);
+                     if (spineStyle === 'THREADS') {
+                         ctx.quadraticCurveTo(p.x + Math.cos(ang+0.25)*len*0.6, p.y + Math.sin(ang+0.25)*len*0.6, ex, ey);
+                     } else {
+                         ctx.lineTo(ex, ey);
+                     }
+
+                     if (spineStyle === 'BULBS') {
+                         ctx.save();
+                         ctx.fillStyle = somaColor;
+                         ctx.shadowColor = somaColor; ctx.shadowBlur = 10;
+                         ctx.beginPath(); ctx.arc(ex, ey, 4.5, 0, Math.PI*2); ctx.fill();
+                         ctx.fillStyle = 'rgba(255,255,255,0.6)';
+                         ctx.beginPath(); ctx.arc(ex-1.5, ey-1.5, 1.2, 0, Math.PI*2); ctx.fill();
+                         ctx.restore();
+                     }
+                 }
+                 ctx.lineWidth = spineStyle === 'THREADS' ? 0.9 : 1.4;
+                 ctx.strokeStyle = somaColor; ctx.stroke();
+            }
+            
+            // Bio-Glow Tips
+            const tip = pts[pts.length-1];
+            ctx.save();
+            ctx.beginPath(); ctx.arc(tip.x, tip.y, lineWidth * 0.75, 0, Math.PI * 2);
+            const tg = ctx.createRadialGradient(tip.x, tip.y, 0, tip.x, tip.y, lineWidth * 1.5);
+            tg.addColorStop(0, '#ffffff'); tg.addColorStop(0.3, somaColor); tg.addColorStop(1, 'transparent');
+            ctx.fillStyle = tg; ctx.shadowColor = somaColor; ctx.shadowBlur = 20;
+            ctx.fill();
+            ctx.restore();
+        }
+
+        // --- 2. SOMA (Body Shape) ---
+        ctx.save();
+        ctx.rotate(currentRot);
+        const bodyRatio = 0.85 + (aspectRatio / 100) * 0.30;
+        ctx.scale(bodyRatio, 1); 
+
+        const sRad = sSizeVal;
+        const dFac = bodyDistortion / 100;
+        
+        ctx.beginPath();
+        for(let a=0; a<Math.PI*2; a+=0.1) {
+            const noise = Math.sin(a * 4 + time) * (dFac * 7);
+            const r = sRad + noise;
+            const px = Math.cos(a) * r;
+            const py = Math.sin(a) * r;
+            if (a === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+
+        const g = ctx.createRadialGradient(-sRad*0.3, -sRad*0.3, sRad*0.05, 0, 0, sRad);
+        g.addColorStop(0, '#ffffff99'); 
+        g.addColorStop(0.3, somaColor); 
+        g.addColorStop(0.85, '#000000aa'); 
+        g.addColorStop(1, 'transparent'); 
+
+        ctx.fillStyle = g;
         ctx.shadowColor = theme.color;
-        ctx.shadowBlur = glowIntensity;
+        ctx.shadowBlur = (somaLum/100) * 50;
         ctx.fill();
         ctx.shadowBlur = 0;
 
-        // Nucleus (The "Eye")
-        ctx.beginPath();
-        ctx.arc(0, 0, 10, 0, Math.PI * 2);
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fill();
-
+        // --- Membrane Coverage Enhancement ---
+        if (textureDensity > 0) {
+            ctx.clip();
+            // Scaling count based on density (Max 0.40 requested)
+            const countFactor = (textureDensity / 100) * 1.5; 
+            if (textureStyle === 'POROUS') {
+                for(let j=0; j<textureDensity * 1.2; j++) {
+                    const r = (j * 137.5) * (Math.PI/180); 
+                    const d = Math.sqrt(j / (textureDensity * 1.2)) * (sRad * 0.9);
+                    const ox = Math.cos(r) * d; const oy = Math.sin(r) * d;
+                    const sz = (Math.sin(j) + 2) * 2.8;
+                    ctx.beginPath(); ctx.arc(ox, oy, sz, 0, Math.PI*2);
+                    ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fill();
+                    ctx.beginPath(); ctx.arc(ox - 1.2, oy - 1.2, sz*0.4, 0, Math.PI*2);
+                    ctx.fillStyle = 'rgba(255,255,255,0.08)'; ctx.fill();
+                }
+            } else if (textureStyle === 'BIO_SYNAPSE') {
+                ctx.beginPath();
+                for(let j=0; j<textureDensity; j++) {
+                    const a = (j/textureDensity)*Math.PI*8 + time*0.1; 
+                    const d = (Math.sin(j) * 0.5 + 0.5) * sRad * 0.8;
+                    ctx.moveTo(0,0); ctx.quadraticCurveTo(Math.cos(a)*d*0.5, Math.sin(a)*d*0.5, Math.cos(a)*d, Math.sin(a)*d);
+                }
+                ctx.strokeStyle = 'rgba(0,0,0,0.45)'; ctx.lineWidth = 2.8; ctx.stroke();
+            } else if (textureStyle === 'CRYSTALLINE') {
+                ctx.strokeStyle = 'rgba(255,255,255,0.1)'; ctx.lineWidth = 1.2;
+                for(let i=-sRad; i<sRad; i+=10) { ctx.beginPath(); ctx.moveTo(i,-sRad); ctx.lineTo(i,sRad); ctx.stroke(); ctx.beginPath(); ctx.moveTo(-sRad,i); ctx.lineTo(sRad,i); ctx.stroke(); }
+            }
+        }
         ctx.restore();
+
+        // --- 3. NUCLEUS ---
+        ctx.save();
+        ctx.rotate(currentRot);
+        const nSize = Math.max(3.5, (nucleusSize / 100 * 24) + heart);
+        ctx.beginPath(); ctx.arc(0, 0, nSize, 0, Math.PI * 2);
+        const ng = ctx.createRadialGradient(0,0,1, 0,0, nSize);
+        ng.addColorStop(0, '#FFFFFF'); ng.addColorStop(0.3, nucleusColor); ng.addColorStop(1, 'transparent');
+        ctx.fillStyle = ng; ctx.shadowColor = nucleusColor; ctx.shadowBlur = 40; ctx.fill();
+        ctx.restore(); ctx.restore();
 
         frameId = requestAnimationFrame(render);
     };
-
     render();
-    return () => {
-        window.removeEventListener('resize', resizeCanvas);
-        cancelAnimationFrame(frameId);
-    };
-  }, [somaLum, rhythm, armLength, armColor, rotation, archetype]);
+    return () => { window.removeEventListener('resize', resize); cancelAnimationFrame(frameId); };
+  }, [somaLum, armLength, armThickness, waviness, spikeFactor, spikeAngle, somaColor, nucleusColor, aspectRatio, bodyDistortion, somaSize, nucleusSize, textureDensity, zoom, spookySpeed, pulseIntensity, trailLevel, textureStyle, theme, isUnlocked, spineStyle]);
+
+  // --- ACTIONS ---
+  const handleFinish = () => {
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += 2;
+      setGenerationProgress(progress);
+      if (progress >= 100) {
+        clearInterval(interval);
+        setTimeout(() => {
+          const canvas = canvasRef.current;
+          if (canvas) {
+            const avatarUrl = canvas.toDataURL('image/png');
+            onComplete(avatarUrl);
+          }
+        }, 500);
+      }
+    }, 30);
+  };
+
+  const Slide = ({ label, icon, val, setter, maxCap = 100, displayMin = 0.00, displayMax = 1.00, locked = false }: any) => {
+      const p = (val / 100);
+      const displayVal = (displayMin + p * (displayMax - displayMin)).toFixed(2);
+      const activeCap = isUnlocked ? 100 : maxCap;
+      
+      return (
+        <div className={`space-y-2 relative group ${locked && !isUnlocked ? 'opacity-40 grayscale' : 'opacity-100'}`}>
+            <div className="flex justify-between text-[10px] uppercase font-bold text-gray-400">
+                <span className="flex items-center gap-2">{icon} {label}</span>
+                <span className="flex items-center gap-2 font-mono">
+                    {(!isUnlocked && val >= maxCap) && <Lock className="w-3 h-3 text-red-500" />}
+                    {displayVal}
+                </span>
+            </div>
+            <div className="relative w-full h-4 flex items-center">
+                <div className="absolute left-0 w-full h-2 bg-black/60 border border-white/5 rounded-full overflow-hidden pointer-events-none">
+                    {!isUnlocked && maxCap < 100 && (
+                        <div className="absolute top-0 right-0 h-full bg-red-900/30 border-l border-red-500/40" style={{ width: `${100 - maxCap}%` }} />
+                    )}
+                    <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-cyan-900 to-cyan-500" style={{ width: `${val}%` }} />
+                </div>
+                {/* Zero-Jitter Native Input */}
+                <input 
+                    type="range" min="0" max="100" value={val} 
+                    onChange={(e) => handleSliderChange(parseInt(e.target.value), setter, activeCap, locked)} 
+                    onMouseDown={() => playMenuSelect()}
+                    className="w-full h-full opacity-0 cursor-ew-resize z-20"
+                />
+                {/* Handle without transition-all to prevent jitter */}
+                <div 
+                    className="absolute w-4 h-4 bg-white rounded-full border-2 border-black shadow-[0_0_15px_white] pointer-events-none z-10"
+                    style={{ left: `calc(${val}% - 8px)` }}
+                />
+            </div>
+        </div>
+      );
+  };
 
   return (
-    <div className="absolute inset-0 w-full h-full bg-[#050505] flex flex-col landscape:flex-row text-[#e0f2fe] font-mono overflow-hidden">
+    <div className="absolute inset-0 w-full h-full bg-[#050505] flex flex-col landscape:flex-row text-[#e0f2fe] font-mono overflow-hidden select-none">
       
-      {/* ================= VISUAL LAB (TOP / LEFT) ================= */}
-      {/* 
-          PORTRAIT: h-[45%] top
-          LANDSCAPE: w-[50%] left, h-full 
-      */}
-      <div className="h-[45%] landscape:h-full landscape:w-1/2 relative flex flex-col items-center bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-gray-900 via-[#050505] to-black border-b landscape:border-b-0 landscape:border-r border-white/10 p-4">
-          
-          {/* Header */}
+      {/* PREVIEW */}
+      <div ref={containerRef} className="h-[45%] landscape:h-full landscape:w-[55%] relative flex flex-col items-center bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-gray-900 via-black to-black p-4 border-r border-white/5 cursor-move group/preview">
           <div className="w-full flex items-center justify-between z-20">
-              <button onClick={onBack} className="p-2 bg-white/5 rounded-full hover:bg-white/10 transition-colors group">
-                  <ArrowLeft className="w-4 h-4 text-gray-400 group-hover:text-white" />
-              </button>
-              <div className="text-[10px] font-bold tracking-[0.2em] animate-pulse" style={{ color: theme.color }}>
-                  {theme.label}
-              </div>
-              <div className="w-8"></div> {/* Spacer */}
-          </div>
-
-          {/* Name Input & Randomizer */}
-          <div className="mt-4 flex items-center gap-2 z-20 w-full max-w-xs relative">
-              <div className="relative flex-1 group">
-                  <input 
-                    type="text" 
-                    value={neuronName}
-                    onChange={(e) => setNeuronName(e.target.value)}
-                    className="w-full bg-black/60 border border-white/20 rounded-xl py-3 px-4 text-center font-tech uppercase tracking-wider focus:border-white/50 focus:outline-none transition-all shadow-[0_0_15px_rgba(0,0,0,0.5)]"
-                    style={{ color: theme.color, textShadow: `0 0 10px ${theme.color}40` }}
-                  />
-                  {/* High-tech corners */}
-                  <div className="absolute top-0 left-0 w-2 h-2 border-t border-l border-white/30 rounded-tl"></div>
-                  <div className="absolute bottom-0 right-0 w-2 h-2 border-b border-r border-white/30 rounded-br"></div>
-              </div>
-              <button 
-                onClick={handleRandomName}
-                className="p-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 hover:border-white/30 transition-all group active:scale-95"
-                title="Mutate Designation"
-              >
-                  <Dna className="w-4 h-4 text-gray-400 group-hover:text-white group-hover:rotate-180 transition-transform duration-500" />
-              </button>
-          </div>
-
-          {/* 3D Viewport Area */}
-          <div className="absolute inset-0 top-20 flex items-center justify-center z-10 overflow-hidden">
-              <canvas ref={canvasRef} className="w-full h-full object-contain" />
-              
-              {/* Interaction Overlay */}
-              <div 
-                className="absolute inset-0 cursor-ew-resize"
-                onMouseMove={(e) => { 
-                    if(e.buttons === 1) {
-                        setRotation(prev => prev + e.movementX * 0.5);
-                    }
-                }}
-                onTouchMove={(e) => {
-                    const touch = e.touches[0];
-                    const rect = (e.target as HTMLElement).getBoundingClientRect();
-                    const x = touch.clientX - rect.left;
-                    // Simple rotation mapping
-                    setRotation(x * 0.5);
-                }}
-              ></div>
-
-              {/* Rotation Helper Icon */}
-              <div className="absolute bottom-12 left-1/2 -translate-x-1/2 opacity-20 pointer-events-none flex gap-2 items-center">
-                  <RotateCw className="w-4 h-4" />
-                  <span className="text-[8px] uppercase tracking-widest">Rotate Axis</span>
+              <button onClick={onBack} className="p-2 bg-white/5 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors"><ArrowLeft className="w-4 h-4" /></button>
+              <div className="flex gap-2">
+                 <button onClick={() => setZoom(z => Math.min(2.5, z+0.1))} className="p-2 bg-white/5 rounded-lg text-white hover:bg-white/10"><ZoomIn className="w-3 h-3"/></button>
+                 <button onClick={() => setZoom(z => Math.max(0.5, z-0.1))} className="p-2 bg-white/5 rounded-lg text-white hover:bg-white/10"><ZoomOut className="w-3 h-3"/></button>
               </div>
           </div>
 
-          {/* HUD Overlay */}
-          <div className="absolute bottom-4 right-4 z-20 flex flex-col items-end">
-              <div className="flex items-center gap-2 text-[9px] text-[#00FFFF] font-bold tracking-widest bg-black/80 px-3 py-1.5 rounded border border-[#00FFFF]/30 backdrop-blur-md shadow-[0_0_10px_rgba(0,255,255,0.1)]">
-                  <Activity className="w-3 h-3 animate-pulse" />
-                  COHERENCE: 50%
-              </div>
-              <div className="text-[7px] text-gray-500 mt-1 uppercase tracking-widest flex items-center gap-1">
-                  <Gauge className="w-2 h-2" />
-                  Zero Point Field Locked
-              </div>
+          <div className="mt-2 flex flex-col items-center z-20 w-full max-w-sm">
+              <input type="text" value={neuronName} onChange={e => setNeuronName(e.target.value)} className="w-full bg-transparent border-b border-white/10 py-1 text-center font-tech text-2xl uppercase tracking-widest text-white outline-none focus:border-white/30" />
+              <div className="mt-1 text-[10px] font-bold tracking-[0.5em] uppercase text-shadow-glow" style={{ color: theme.color }}>{theme.label}</div>
+          </div>
+
+          <canvas ref={canvasRef} className="w-full h-full object-contain pointer-events-none" />
+          <div className="absolute bottom-16 right-4 text-[8px] text-gray-600 uppercase font-mono tracking-widest animate-pulse pointer-events-none opacity-0 group-hover/preview:opacity-100 transition-opacity">DRAG TO ROTATE</div>
+          
+          <div className="absolute bottom-4 left-4 z-20 flex gap-2">
+              <button onClick={handleRandomName} title="Randomize Name" className="p-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 active:scale-95 transition-all"><Dna className="w-4 h-4" /></button>
+              <button onClick={handleRandomizeAll} title="Mutate All" className="p-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 active:scale-95 transition-all"><Dice5 className="w-4 h-4" /></button>
+              <button onClick={handleResetToClass} title="Reset to Class" className="p-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 active:scale-95 transition-all"><RefreshCw className="w-4 h-4" /></button>
           </div>
       </div>
 
-      {/* ================= CONTROLS (BOTTOM / RIGHT) ================= */}
-      {/* 
-          PORTRAIT: flex-1, overflow-y
-          LANDSCAPE: w-[50%] right, h-full, overflow-y
-      */}
-      <div className="flex-1 landscape:w-1/2 overflow-y-auto custom-scrollbar bg-black/40 backdrop-blur-md relative border-t landscape:border-t-0 border-white/5">
-          
-          <div className="p-6 space-y-8 pb-32 max-w-2xl mx-auto">
-              
-              {/* SECTION 1: SOMA CONFIGURATION */}
-              <div className="space-y-4">
-                  <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                      <div className="flex items-center gap-2 text-xs font-bold text-gray-300 uppercase tracking-widest">
-                          <Sun className="w-3 h-3 text-white" /> Soma Configuration
-                      </div>
-                      <div className="text-[9px] text-gray-600 font-mono">ID: CORE_LOGIC</div>
-                  </div>
-                  
-                  {/* Spectral Signature (Fixed) */}
-                  <div className="flex items-center justify-between p-3 bg-white/5 rounded-lg border border-white/5 opacity-70">
-                      <span className="text-[10px] uppercase text-gray-400 font-bold">Spectral Signature (Fixed)</span>
-                      <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 rounded-full shadow-[0_0_5px_currentColor]" style={{ backgroundColor: theme.color }}></div>
-                          <Lock className="w-3 h-3 text-gray-600" />
-                      </div>
-                  </div>
+      {/* CUSTOMIZATION */}
+      <div className="flex-1 landscape:w-[45%] flex flex-col bg-black/40 backdrop-blur-md border-t landscape:border-t-0 border-white/5 overflow-hidden">
+          <div className="flex border-b border-white/10 shrink-0">
+              {['STRUCTURE', 'SURFACE', 'MOTION', 'MUTATION'].map(t => (
+                  <button key={t} onClick={() => { playMenuSelect(); setActiveTab(t as any); }} className={`flex-1 py-4 text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === t ? 'text-white bg-white/5 border-b-2 border-cyan-500' : 'text-gray-500 hover:text-gray-300'}`}>{t}</button>
+              ))}
+          </div>
 
-                  {/* Luminosity Slider */}
-                  <div className="bg-black/40 border border-white/10 rounded-xl p-4">
-                      <div className="flex justify-between text-[10px] text-gray-400 mb-3 uppercase font-bold">
-                          <span>Bioluminescence</span>
-                          <span className="text-white">{somaLum}%</span>
-                      </div>
-                      <input 
-                        type="range" min="60" max="100" value={somaLum} 
-                        onChange={(e) => handleSliderChange(e, setSomaLum)}
-                        className="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer"
-                        style={{ accentColor: theme.color }}
-                      />
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8 pb-32">
+              {activeTab === 'STRUCTURE' && (
+                  <div className="space-y-8 animate-fadeIn">
+                      <Slide label="Soma Mass" icon={<CircleDashed className="w-3 h-3"/>} val={somaSize} setter={setSomaSize} displayMin={0.50} displayMax={1.00} maxCap={25} />
+                      <Slide label="Body Shape" icon={<Minimize2 className="w-3 h-3"/>} val={aspectRatio} setter={setAspectRatio} displayMin={0.85} displayMax={1.15} />
+                      <Slide label="Body Distortion" icon={<Waves className="w-3 h-3"/>} val={bodyDistortion} setter={setBodyDistortion} displayMin={0.00} displayMax={0.50} maxCap={25} />
+                      <Slide label="Nucleus Core" icon={<Eye className="w-3 h-3"/>} val={nucleusSize} setter={setNucleusSize} displayMin={0.00} displayMax={1.00} maxCap={25} />
+                      <Slide label="Dendrite Reach" icon={<Network className="w-3 h-3"/>} val={armLength} setter={setArmLength} displayMin={0.10} displayMax={0.75} maxCap={25} />
+                      <Slide label="Arm Thickness" icon={<Grip className="w-3 h-3"/>} val={armThickness} setter={setArmThickness} displayMin={0.00} displayMax={0.40} maxCap={25} />
                   </div>
+              )}
 
-                  {/* Rhythm Selector */}
-                  <div>
-                      <div className="text-[10px] text-gray-500 uppercase font-bold mb-2 ml-1">Microtubule Resonance (Orch-OR)</div>
-                      <div className="flex gap-2">
-                          <button 
-                            onClick={() => handleRhythmSelect('ALPHA')}
-                            className={`flex-1 py-3 rounded-xl border text-[9px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all ${rhythm === 'ALPHA' ? `bg-${theme.color}/20 border-${theme.color} text-white` : 'bg-black border-white/10 text-gray-500'}`}
-                            style={rhythm === 'ALPHA' ? { borderColor: theme.color, backgroundColor: `${theme.color}20` } : {}}
-                          >
-                              <CircleDashed className={`w-3 h-3 ${rhythm === 'ALPHA' ? 'animate-spin-slow' : ''}`} /> Alpha (Slow)
-                          </button>
-                          
-                          {/* LOCKED GAMMA OPTION */}
-                          <button 
-                            onClick={() => handleRhythmSelect('GAMMA')}
-                            className={`flex-1 py-3 rounded-xl border text-[9px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all relative overflow-hidden bg-black/40 border-white/5 text-gray-600 cursor-not-allowed`}
-                          >
-                              <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/diagonal-stripes.png')] opacity-10"></div>
-                              <Lock className="w-3 h-3" /> Gamma (Fast)
-                          </button>
-                      </div>
-                      <div className="mt-2 text-[8px] text-gray-500 text-center italic">
-                          Gamma State Awareness unlocks via Neural Achievements
-                      </div>
-                  </div>
-              </div>
-
-              {/* SECTION 2: DENDRITIC ARBORIZATION */}
-              <div className="space-y-4 pt-4">
-                  <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                      <div className="flex items-center gap-2 text-xs font-bold text-gray-300 uppercase tracking-widest">
-                          <Network className="w-3 h-3 text-white" /> Synaptic Reach
-                      </div>
-                      <div className="text-[9px] text-gray-600 font-mono">ID: REACH_LOGIC</div>
-                  </div>
-
-                  {/* Length Slider (Capped) */}
-                  <div className="bg-black/40 border border-white/10 rounded-xl p-4 relative overflow-hidden">
-                      <div className="flex justify-between text-[10px] text-gray-400 mb-3 uppercase font-bold relative z-10">
-                          <span>Growth Cone Extension</span>
-                          <span className={armLength >= 50 ? "text-red-500 animate-pulse font-mono" : "text-white font-mono"}>
-                              {armLength}% {armLength >= 50 && "[MAX LIMIT]"}
-                          </span>
-                      </div>
-                      
-                      <div className="relative z-10">
-                          <input 
-                            type="range" min="10" max="50" value={armLength} 
-                            onChange={(e) => handleSliderChange(e, setArmLength)}
-                            className="w-full h-1 bg-gray-800 rounded-lg appearance-none cursor-pointer"
-                            style={{ accentColor: theme.color }}
-                          />
-                          
-                          {/* Visual representation of the locked remaining 50% */}
-                          <div className="absolute top-[6px] right-0 w-1/2 h-1 bg-red-900/30 pointer-events-none"></div>
-                      </div>
-
-                      {armLength >= 50 && (
-                          <div className="mt-3 p-2 bg-red-900/20 border border-red-900/50 rounded flex items-center gap-2">
-                              <Lock className="w-3 h-3 text-red-500" />
-                              <span className="text-[9px] text-red-400 uppercase tracking-wide">
-                                  Requires Cognitive Mass 5.0 (Level 5) to extend
-                              </span>
+              {activeTab === 'SURFACE' && (
+                  <div className="space-y-8 animate-fadeIn">
+                      <Slide label="Bio-Luminescence" icon={<Sun className="w-3 h-3"/>} val={somaLum} setter={setSomaLum} maxCap={25} />
+                      <Slide label="Texture Density" icon={<Layers className="w-3 h-3"/>} val={textureDensity} setter={setTextureDensity} displayMin={0.00} displayMax={0.40} maxCap={25} />
+                      <div>
+                          <div className="text-[10px] text-gray-500 uppercase font-bold mb-3 tracking-widest">Membrane Topology</div>
+                          <div className="grid grid-cols-3 gap-2">
+                              {['POROUS', 'BIO_SYNAPSE', 'CRYSTALLINE'].map(s => (
+                                  <button key={s} onClick={() => { if(isUnlocked || s === 'POROUS') { playCosmicClick(); setTextureStyle(s as any); } else playError(); }} className={`p-3 border rounded text-[9px] uppercase font-bold tracking-widest flex items-center justify-center gap-2 transition-all ${textureStyle === s ? 'bg-white text-black border-white shadow-[0_0_15px_white]' : 'border-white/10 text-gray-500 hover:border-white/30'} ${!isUnlocked && s !== 'POROUS' && 'opacity-30'}`}>{!isUnlocked && s !== 'POROUS' && <Lock className="w-2.5 h-2.5"/>} {s.replace('_',' ')}</button>
+                              ))}
                           </div>
-                      )}
-                  </div>
-
-                  {/* Membrane Potential (Color) */}
-                  <div>
-                      <div className="text-[10px] text-gray-500 uppercase font-bold mb-3 ml-1">Membrane Potential</div>
-                      <div className="grid grid-cols-4 gap-3">
-                          {COLORS.map((c, i) => (
-                              <button 
-                                key={i}
-                                onClick={() => handleColorSelect(c)}
-                                className={`h-12 rounded-xl border relative group transition-all transform hover:scale-105 active:scale-95 ${armColor === c.hex ? 'border-white ring-2 ring-white/20' : 'border-transparent'}`}
-                                style={{ backgroundColor: c.hex }}
-                                title={c.name}
-                              >
-                                  {c.locked && (
-                                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 rounded-xl backdrop-blur-[1px]">
-                                          <Lock className="w-3 h-3 text-white mb-1" />
-                                          <span className="text-[6px] text-white uppercase tracking-wider font-bold">ARCHITECT</span>
-                                      </div>
-                                  )}
-                              </button>
+                      </div>
+                      <div className="space-y-6">
+                          {[{ label: "Soma Pigment", type: 'SOMA', val: somaColor }, { label: "Nucleus Glow", type: 'NUCLEUS', val: nucleusColor }].map((cp, idx) => (
+                              <div key={idx}>
+                                  <div className="text-[10px] text-gray-500 uppercase font-bold mb-3 tracking-widest">{cp.label}</div>
+                                  <div className="grid grid-cols-6 gap-2">{PALETTE.map((c, i) => (
+                                      <button key={i} onClick={() => handleColorSelect(c.hex, cp.type as any, c.locked)} className={`h-8 rounded-lg border transition-all ${cp.val === c.hex ? 'border-white ring-2 ring-white/50 scale-110' : 'border-transparent hover:scale-105'} relative ${c.locked && !isUnlocked ? 'opacity-20 cursor-not-allowed' : ''}`} style={{ backgroundColor: c.hex }}>{c.locked && !isUnlocked && <Lock className="w-3 h-3 text-black absolute inset-0 m-auto"/>}</button>
+                                  ))}</div>
+                              </div>
                           ))}
                       </div>
                   </div>
-              </div>
+              )}
 
-              {/* SECTION 3: EPIGENETIC POTENTIAL (LOCKED) */}
-              <div className="space-y-4 pt-4 pb-8 opacity-70 grayscale hover:grayscale-0 transition-all duration-700">
-                  <div className="flex items-center justify-between border-b border-white/10 pb-2">
-                      <div className="flex items-center gap-2 text-xs font-bold text-gray-300 uppercase tracking-widest">
-                          <Dna className="w-3 h-3 text-white" /> Epigenetic Potential
-                      </div>
-                      <div className="text-[9px] text-gray-600 font-mono">STATUS: DORMANT</div>
+              {activeTab === 'MOTION' && (
+                  <div className="space-y-8 animate-fadeIn">
+                       {!isUnlocked && <div className="p-4 bg-red-900/20 border border-red-500/30 rounded-2xl text-[10px] text-red-400 font-bold uppercase tracking-widest flex items-center gap-3"><Lock className="w-4 h-4" /> Evolutionary Unlock Required</div>}
+                       <Slide label="Spooky Motion" icon={<RotateCw className="w-3 h-3"/>} val={spookySpeed} setter={setSpookySpeed} displayMin={0.00} displayMax={0.25} locked={true} />
+                       <Slide label="Quantum Trails" icon={<Wind className="w-3 h-3"/>} val={trailLevel} setter={setTrailLevel} displayMin={0.00} displayMax={0.60} locked={true} />
+                       <Slide label="Nucleus Pulse" icon={<Activity className="w-3 h-3"/>} val={pulseIntensity} setter={setPulseIntensity} displayMin={0.00} displayMax={1.00} locked={true} />
                   </div>
-                  
-                  {[
-                      { name: 'Myelin Sheath', desc: 'Increases signal velocity (Armor)', lvl: 10 },
-                      { name: 'Axon Hillock', desc: 'Signal Booster (Amplifier)', lvl: 20 },
-                      { name: 'Multipolar Expansion', desc: 'Grow 4 additional arms (Geometry)', lvl: 30 }
-                  ].map((item, i) => (
-                      <div key={i} className="relative p-4 bg-gradient-to-r from-gray-900 to-[#0a0a0a] border border-white/10 rounded-xl overflow-hidden group cursor-not-allowed">
-                          <div className="flex justify-between items-center relative z-10">
-                              <div>
-                                  <div className="text-[10px] font-bold uppercase text-gray-400">{item.name}</div>
-                                  <div className="text-[9px] text-gray-600">{item.desc}</div>
-                              </div>
-                              <div className="flex items-center gap-2 px-2 py-1 bg-black/50 rounded border border-white/10">
-                                  <Lock className="w-3 h-3 text-gray-500" />
-                                  <span className="text-[8px] text-gray-500 font-mono">LVL {item.lvl}</span>
-                              </div>
-                          </div>
-                          
-                          {/* Cryo Effect Overlay */}
-                          <div className="absolute inset-0 bg-gradient-to-r from-blue-900/5 to-transparent pointer-events-none"></div>
-                          <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/diagonal-stripes.png')] opacity-5"></div>
-                      </div>
-                  ))}
-              </div>
+              )}
 
+              {activeTab === 'MUTATION' && (
+                  <div className="space-y-8 animate-fadeIn">
+                      <Slide label="Flow State" icon={<Waves className="w-3 h-3"/>} val={waviness} setter={setWaviness} displayMin={0.01} displayMax={0.02} maxCap={5} />
+                      <Slide label="Spiny Protrusions" icon={<Triangle className="w-3 h-3"/>} val={spikeFactor} setter={setSpikeFactor} displayMin={0.00} displayMax={1.00} locked={true} />
+                      <Slide label="Protrusion Angle" icon={<Compass className="w-3 h-3"/>} val={spikeAngle} setter={setSpikeAngle} displayMin={0} displayMax={180} locked={true} />
+                      <div>
+                          <div className="text-[10px] text-gray-500 uppercase font-bold mb-3 tracking-widest">Spine Morphology</div>
+                          <div className="grid grid-cols-3 gap-2">
+                              {['THORNS', 'BULBS', 'THREADS'].map(s => (
+                                  <button key={s} onClick={() => { if(isUnlocked) { playCosmicClick(); setSpineStyle(s as any); } else playError(); }} className={`p-3 border rounded text-[9px] uppercase font-bold tracking-widest flex items-center justify-center gap-2 transition-all ${spineStyle === s ? 'bg-white text-black border-white shadow-[0_0_15px_white]' : 'border-white/10 text-gray-500 hover:border-white/30'} ${!isUnlocked && 'opacity-30'}`}>{!isUnlocked && 'opacity-30' && <Lock className="w-2.5 h-2.5"/>} {s}</button>
+                              ))}
+                          </div>
+                      </div>
+                  </div>
+              )}
           </div>
       </div>
 
-      {/* ================= FOOTER ACTION ================= */}
-      <div className="absolute bottom-0 right-0 w-full landscape:w-1/2 p-6 bg-gradient-to-t from-black via-black to-transparent z-50">
-          {!isGenerating ? (
-              <button 
-                onClick={handleFinish}
-                className="w-full py-5 rounded-2xl font-tech text-lg uppercase tracking-[0.2em] text-white shadow-[0_0_40px_rgba(0,0,0,0.5)] transition-all transform hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-3 relative overflow-hidden group border border-white/10"
-                style={{ backgroundColor: theme.color }}
-              >
-                  <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-                  <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-10"></div>
-                  
-                  <span className="relative z-10 flex items-center gap-3 font-bold text-shadow-glow">
-                      <Zap className="w-5 h-5 fill-current" />
-                      Finish Differentiation
-                  </span>
-              </button>
-          ) : (
-              <div className="w-full bg-gray-900 h-16 rounded-2xl border border-white/10 relative overflow-hidden flex flex-col items-center justify-center shadow-[0_0_30px_rgba(0,0,0,0.8)]">
-                  <div 
-                    className="absolute left-0 top-0 h-full transition-all duration-75 ease-out opacity-40"
-                    style={{ width: `${generationProgress}%`, backgroundColor: theme.color }}
-                  ></div>
-                  
-                  <span className="relative z-10 font-mono text-xs animate-pulse tracking-widest text-white mb-1">
-                      WEAVING CELLULAR MATRIX... {generationProgress}%
-                  </span>
-                  
-                  <div className="relative z-10 flex gap-1 h-1">
-                      <div className="w-1 h-1 bg-white animate-bounce"></div>
-                      <div className="w-1 h-1 bg-white animate-bounce delay-75"></div>
-                      <div className="w-1 h-1 bg-white animate-bounce delay-150"></div>
-                  </div>
-              </div>
-          )}
+      <div className="absolute bottom-0 right-0 w-full landscape:w-[45%] p-6 bg-gradient-to-t from-black via-black/80 to-transparent z-50 pointer-events-none">
+          <div className="pointer-events-auto">
+            {!isGenerating ? (
+                <button onClick={() => { playNeuralLink(); setIsGenerating(true); handleFinish(); }} className="w-full py-6 rounded-2xl font-tech text-xl uppercase tracking-[0.3em] text-white shadow-2xl transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-4 relative overflow-hidden group border border-white/20" style={{ backgroundColor: theme.color }}>
+                    <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+                    <span className="relative z-10 flex items-center gap-3 font-bold text-shadow-glow"><Zap className="w-6 h-6 fill-current" /> Finish Differentiation</span>
+                </button>
+            ) : (
+                <div className="w-full bg-gray-900 h-20 rounded-2xl border border-white/10 relative overflow-hidden flex flex-col items-center justify-center shadow-inner">
+                    <div className="absolute left-0 top-0 h-full opacity-50 transition-all duration-75" style={{ width: `${generationProgress}%`, backgroundColor: theme.color }}></div>
+                    <span className="relative z-10 font-mono text-xs animate-pulse tracking-[0.5em] text-white">WEAVING CELLULAR MATRIX... {generationProgress}%</span>
+                </div>
+            )}
+          </div>
       </div>
-
     </div>
   );
 };
