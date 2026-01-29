@@ -11,11 +11,12 @@ import { LoginPortal } from './components/Onboarding/LoginPortal';
 import { ArchetypeShowcase } from './components/Onboarding/ArchetypeShowcase'; 
 import { NeuralInit } from './components/Onboarding/NeuralInit';
 import { ArchetypeReveal } from './components/Onboarding/ArchetypeReveal';
+import { FinalReveal } from './components/Onboarding/FinalReveal';
 import { NeuronBuilder } from './components/Onboarding/NeuronBuilder';
 import { TransitionScreen } from './components/TransitionScreen';
 import { WarpScreen } from './components/WarpScreen';
 
-type OnboardingStep = 'PORTAL' | 'SHOWCASE' | 'INIT' | 'REVEAL' | 'SKILL_INIT' | 'WARP' | 'BUILDER' | 'COMPLETE';
+type OnboardingStep = 'PORTAL' | 'SHOWCASE' | 'INIT' | 'REVEAL' | 'SKILL_INIT' | 'SYNTHESIS' | 'WARP' | 'BUILDER' | 'COMPLETE';
 
 const AppContent: React.FC = () => {
   const [path, setPath] = useState<UserPath>(UserPath.NONE);
@@ -54,7 +55,7 @@ const AppContent: React.FC = () => {
     localStorage.setItem('gb_user_database', JSON.stringify(db));
   };
 
-  // --- INITIALIZATION (WITH BLANK SCREEN FIX) ---
+  // --- INITIALIZATION ---
   useEffect(() => {
     const savedPath = localStorage.getItem('gb_path') as UserPath;
     const savedAuthToken = localStorage.getItem('gb_auth_token');
@@ -63,7 +64,6 @@ const AppContent: React.FC = () => {
       const db = getUserDB();
       const emailKey = Object.keys(db).find(key => savedAuthToken.includes(key));
       
-      // CRITICAL FIX: Ensure record AND record.profile exist before committing to UI step
       if (emailKey && db[emailKey] && db[emailKey].profile) {
          const record = db[emailKey];
          setUserProfile(record.profile);
@@ -82,7 +82,6 @@ const AppContent: React.FC = () => {
              setOnboardingStep('SHOWCASE');
          }
       } else {
-        // CORRUPT DATA DETECTED: Force reset to Portal for safety
         localStorage.removeItem('gb_auth_token');
         setOnboardingStep('PORTAL');
       }
@@ -118,11 +117,13 @@ const AppContent: React.FC = () => {
           setOnboardingStep('INIT');
       } else if (onboardingStep === 'SKILL_INIT') {
           setOnboardingStep('REVEAL');
+      } else if (onboardingStep === 'SYNTHESIS') {
+          setOnboardingStep('SKILL_INIT');
       } else if (onboardingStep === 'BUILDER') {
           if (path !== UserPath.NONE) {
               setOnboardingStep('COMPLETE');
           } else {
-              setOnboardingStep('SKILL_INIT');
+              setOnboardingStep('SYNTHESIS');
           }
       }
   };
@@ -218,7 +219,6 @@ const AppContent: React.FC = () => {
      }
   };
 
-  // HANDLER FOR PHASE 1: DETERMINING ARCHETYPE
   const handleArchetypeCalibrationComplete = (profile: any) => {
       setCalibrationProfile(profile);
       setArchetypeKey(profile.finalArchetype || 'ACTIVE_NODE');
@@ -233,8 +233,6 @@ const AppContent: React.FC = () => {
   const handleAcceptArchetype = (selectedPath: UserPath, color: string) => {
     setPath(selectedPath);
     setWarpColor(color);
-    
-    // TRANSITION TO PHASE 2: SKILLS
     triggerTransition('SKILL_INIT', "IDENTITY INTEGRATED", [
         "Calibrating skill sub-processors...",
         "Phase 2: Functional Assessment...",
@@ -242,7 +240,6 @@ const AppContent: React.FC = () => {
     ]);
   };
 
-  // HANDLER FOR PHASE 2: DETERMINING SKILL
   const handleSkillCalibrationComplete = (profileWithSkill: any) => {
       setCalibrationProfile(profileWithSkill);
       localStorage.setItem('gb_path', path);
@@ -252,7 +249,14 @@ const AppContent: React.FC = () => {
           startingSkill: profileWithSkill.finalSkill 
       });
 
-      // PROCEED TO WARP
+      triggerTransition('SYNTHESIS', "PROFILE SYNTHESIS", [
+          "Merging identity and skill modules...",
+          "Calculating metabolic synergy...",
+          "Final Dossier Ready."
+      ]);
+  };
+
+  const handleFinalAccept = () => {
       setOnboardingStep('WARP');
   };
 
@@ -384,6 +388,14 @@ const AppContent: React.FC = () => {
                 onComplete={handleSkillCalibrationComplete} 
                 onBack={handleGoBack}
                 existingProfile={calibrationProfile}
+            />
+        )}
+
+        {onboardingStep === 'SYNTHESIS' && (
+            <FinalReveal 
+                profile={calibrationProfile} 
+                onAccept={handleFinalAccept} 
+                onBack={handleGoBack}
             />
         )}
 
