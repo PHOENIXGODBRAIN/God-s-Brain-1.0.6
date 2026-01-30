@@ -155,13 +155,17 @@ const AppContent: React.FC = () => {
   };
 
   const handleLoginSuccess = (email: string) => {
+    // Added atp, proteins, voltage properties to comply with UserProfile interface
     const profile: UserProfile = {
         name: email.split('@')[0],
         email: email,
         provider: 'email',
         avatar: undefined,
         level: 1,
-        xp: 0
+        xp: 0,
+        atp: 85,
+        proteins: 420,
+        voltage: 15
     };
 
     const db = getUserDB();
@@ -323,13 +327,17 @@ const AppContent: React.FC = () => {
   };
 
   const handleAuthorLogin = () => {
+    // Added atp, proteins, voltage properties to comply with UserProfile interface
     const authorProfile: UserProfile = {
         name: 'The Phoenix',
         email: 'architect@source.code',
         provider: 'email',
         avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=Phoenix',
         level: 99,
-        xp: 0
+        xp: 0,
+        atp: 100,
+        proteins: 1000,
+        voltage: 24
     };
     
     setIsAuthor(true);

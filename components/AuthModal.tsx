@@ -54,14 +54,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onLogin, onClose }) => {
                 clearInterval(interval);
                 // Finalize Login
                 setTimeout(() => {
-                    // Fix: Adding missing level and xp properties required by UserProfile interface.
+                    // Fix: Adding missing level, xp, atp, proteins, and voltage properties required by UserProfile interface.
                     const mockProfile: UserProfile = {
                         name: oauthProvider === 'google' ? 'Google User' : 'Apple User',
                         email: oauthProvider === 'google' ? 'user@gmail.com' : 'user@icloud.com',
                         avatar: oauthProvider === 'google' ? 'https://lh3.googleusercontent.com/a/default-user=s96-c' : undefined,
                         provider: oauthProvider!,
                         level: 1,
-                        xp: 0
+                        xp: 0,
+                        atp: 85,
+                        proteins: 420,
+                        voltage: 15
                     };
                     onLogin(mockProfile);
                 }, 800);
@@ -84,8 +87,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onLogin, onClose }) => {
         playNeuralLink();
         setLoading('email');
         setTimeout(() => {
-            // Fix: Adding level: 99 and xp: 0 for the author profile.
-            onLogin({ name: 'The Phoenix', email: 'phoenix', provider: 'email', level: 99, xp: 0 });
+            // Fix: Adding level, xp, atp, proteins, and voltage for the author profile.
+            onLogin({ 
+              name: 'The Phoenix', 
+              email: 'phoenix', 
+              provider: 'email', 
+              level: 99, 
+              xp: 0,
+              atp: 100,
+              proteins: 1000,
+              voltage: 24
+            });
         }, 1000);
         return;
     }
@@ -99,13 +111,16 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onLogin, onClose }) => {
     setLoading('email');
     
     setTimeout(() => {
-        // Fix: Adding missing level and xp properties required by UserProfile interface.
+        // Fix: Adding missing level, xp, atp, proteins, and voltage properties required by UserProfile interface.
         const mockProfile: UserProfile = {
             name: email.split('@')[0],
             email: email,
             provider: 'email',
             level: 1,
-            xp: 0
+            xp: 0,
+            atp: 85,
+            proteins: 420,
+            voltage: 15
         };
         onLogin(mockProfile);
     }, 2000);

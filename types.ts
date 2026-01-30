@@ -27,6 +27,9 @@ export interface UserState {
   level: number;
   xp: number;
   entropy: number;
+  atp: number;
+  proteins: number;
+  voltage: number;
 }
 
 export interface UserProfile {
@@ -38,6 +41,9 @@ export interface UserProfile {
   startingSkill?: string;
   level: number;
   xp: number;
+  atp: number;
+  proteins: number;
+  voltage: number;
 }
 
 export interface Chapter {

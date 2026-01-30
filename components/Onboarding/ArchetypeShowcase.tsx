@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Atom, Anchor, Sparkles, Compass, Scroll, Cpu, Zap, ArrowRight, X, CheckCircle, Brain, AlertTriangle, Info, ChevronDown } from 'lucide-react';
+import { Atom, Anchor, Sparkles, Compass, Scroll, Cpu, Zap, ArrowRight, X, CheckCircle, Brain, Info, ChevronDown } from 'lucide-react';
 import { playNeuralLink, playCosmicClick, playDataOpen } from '../../utils/sfx';
 
 interface ArchetypeShowcaseProps {

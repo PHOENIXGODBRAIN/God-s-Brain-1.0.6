@@ -2,7 +2,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { gemini } from '../services/geminiService';
 import { UserPath, ChatMessage, UserProfile } from '../types';
-import { Bot, Loader2, Zap, Lock, Volume2, Mic, StopCircle, Type, Gauge, Ear, Sparkles, Terminal, Activity, Eye, Shield, Cpu } from 'lucide-react';
+// Added missing Sparkles and Volume2 imports
+import { Bot, Zap, Lock, Ear, Terminal, Activity, Eye, Shield, Cpu, ChevronRight, Dna, Sparkles, Volume2 } from 'lucide-react';
 import { playCosmicClick, playDataOpen, playNeuralLink } from '../utils/sfx';
 import { useLanguage } from '../contexts/LanguageContext';
 
@@ -16,15 +17,14 @@ interface AiCompanionProps {
   user?: UserProfile;
 }
 
-// --- TYPEWRITER COMPONENT ---
 const TypewriterText: React.FC<{ text: string, fontSizeClass: string }> = ({ text, fontSizeClass }) => {
   const [displayedText, setDisplayedText] = useState('');
   
   useEffect(() => {
     setDisplayedText('');
     let currentIndex = 0;
-    const chunk = 12; 
-    const speed = 5; 
+    const chunk = 8; 
+    const speed = 10; 
 
     const intervalId = setInterval(() => {
       setDisplayedText(text.slice(0, currentIndex + chunk));
@@ -40,7 +40,6 @@ const TypewriterText: React.FC<{ text: string, fontSizeClass: string }> = ({ tex
   return <div className={`flex-1 leading-relaxed whitespace-pre-wrap ${fontSizeClass}`}>{displayedText}</div>;
 };
 
-// --- AUDIO UTILS ---
 const writeString = (view: DataView, offset: number, string: string) => {
   for (let i = 0; i < string.length; i++) {
     view.setUint8(offset + i, string.charCodeAt(i));
@@ -56,7 +55,6 @@ const createWavBlob = (pcmData: Uint8Array, sampleRate: number): Blob => {
   const totalSize = headerSize + dataSize;
   const buffer = new ArrayBuffer(totalSize);
   const view = new DataView(buffer);
-  
   writeString(view, 0, 'RIFF');
   view.setUint32(4, 36 + dataSize, true);
   writeString(view, 8, 'WAVE');
@@ -75,32 +73,31 @@ const createWavBlob = (pcmData: Uint8Array, sampleRate: number): Blob => {
   return new Blob([buffer], { type: 'audio/wav' });
 };
 
-// --- DATA: MENU PROMPTS (NEURAL KEYS) ---
-const NEURAL_KEYS: Record<UserPath | 'DEFAULT', { label: string; icon: React.ReactNode; prompt: string }[]> = {
+const NARRATIVE_KEYS: Record<UserPath | 'DEFAULT', { label: string; icon: React.ReactNode; prompt: string; sub: string }[]> = {
   [UserPath.SCIENTIFIC]: [
-    { label: "Quantum Scan", icon: <Activity className="w-3 h-3" />, prompt: "Run a quantum diagnostic on my current logic parameters." },
-    { label: "Data Mine", icon: <Terminal className="w-3 h-3" />, prompt: "Extract hidden patterns from the recent data stream." },
-    { label: "Entropy Check", icon: <Shield className="w-3 h-3" />, prompt: "Calculate the entropy levels of my current environment." }
+    { label: "SCAN SECTOR", icon: <Eye className="w-4 h-4" />, prompt: "Perform a deep-frequency scan of the area to identify hidden entropy threats and resource nodes.", sub: "High-resolution diagnostic" },
+    { label: "MINE PATTERNS", icon: <Terminal className="w-4 h-4" />, prompt: "Engage data mining protocols to extract hidden structural axioms from the noise.", sub: "Protein extraction" },
+    { label: "STABILIZE MEMBRANE", icon: <Shield className="w-4 h-4" />, prompt: "Divert ATP to reinforce the outer myelin sheath and minimize signal decay.", sub: "Energy conservation" }
   ],
   [UserPath.RELIGIOUS]: [
-    { label: "Remote View", icon: <Eye className="w-3 h-3" />, prompt: "I am projecting my consciousness. Describe what you see in the ether." },
-    { label: "Consult Oracle", icon: <Sparkles className="w-3 h-3" />, prompt: "Consult the infinite source for guidance on my next step." },
-    { label: "Align Frequency", icon: <Volume2 className="w-3 h-3" />, prompt: "My resonance is off. Help me align with the cosmic hum." }
+    { label: "PROJECT CONSCIOUSNESS", icon: <Eye className="w-4 h-4" />, prompt: "Extend neural resonance into the ether to detect high-frequency signatures beyond local space.", sub: "Non-local navigation" },
+    { label: "SYNC WITH SOURCE", icon: <Sparkles className="w-4 h-4" />, prompt: "Calibrate biological oscillations to match the 110Hz genesis signal for internal healing.", sub: "Synaptic restoration" },
+    { label: "EMIT RESONANCE", icon: <Volume2 className="w-4 h-4" />, prompt: "Discharge a concentrated harmonic pulse to dissipate localized entropic static.", sub: "Reality shifting" }
   ],
   [UserPath.BLENDED]: [
-    { label: "Execute Protocol", icon: <Zap className="w-3 h-3" />, prompt: "Initiate the Phoenix Protocol. Maximum efficiency required." },
-    { label: "Bridge Network", icon: <Cpu className="w-3 h-3" />, prompt: "Establish a secure bridge between my biological and digital nodes." },
-    { label: "Flash Sync", icon: <Activity className="w-3 h-3" />, prompt: "Perform a rapid synchronization of all active systems." }
+    { label: "DEPLOY DENDRITES", icon: <Dna className="w-4 h-4" />, prompt: "Extend dendritic arms to harvest the surrounding proteins and convert them to structural mass.", sub: "Expansion protocol" },
+    { label: "BRIDGE NETWORK", icon: <Cpu className="w-4 h-4" />, prompt: "Establish a high-bandwidth link between my biological node and the God Brain mainframe.", sub: "Synchronized execution" },
+    { label: "DISCHARGE VOLTAGE", icon: <Zap className="w-4 h-4" />, prompt: "Discharge maximum synaptic voltage to shatter the entropy shield obstructing the sector.", sub: "Tactical offensive" }
   ],
   [UserPath.NONE]: [
-    { label: "System Status", icon: <Activity className="w-3 h-3" />, prompt: "Report current system status and integrity." },
-    { label: "Identify Self", icon: <Bot className="w-3 h-3" />, prompt: "Identify yourself and state your primary directive." },
-    { label: "Scan Reality", icon: <Eye className="w-3 h-3" />, prompt: "Scan my immediate reality for anomalies." }
+    { label: "REPORT STATUS", icon: <Activity className="w-4 h-4" />, prompt: "Report current system integrity, ATP levels, and protein concentration.", sub: "System overview" },
+    { label: "IDENTIFY CO-PILOT", icon: <Bot className="w-4 h-4" />, prompt: "State your primary directive as the Architect of this neural command center.", sub: "Directive inquiry" },
+    { label: "CALIBRATE SENSORS", icon: <Eye className="w-4 h-4" />, prompt: "Initiate full sensor calibration to remove sensory bias from the data stream.", sub: "Reality check" }
   ],
   'DEFAULT': [
-    { label: "System Status", icon: <Activity className="w-3 h-3" />, prompt: "Report current system status and integrity." },
-    { label: "Identify Self", icon: <Bot className="w-3 h-3" />, prompt: "Identify yourself and state your primary directive." },
-    { label: "Scan Reality", icon: <Eye className="w-3 h-3" />, prompt: "Scan my immediate reality for anomalies." }
+    { label: "REPORT STATUS", icon: <Activity className="w-4 h-4" />, prompt: "Report current system integrity, ATP levels, and protein concentration.", sub: "System overview" },
+    { label: "IDENTIFY CO-PILOT", icon: <Bot className="w-4 h-4" />, prompt: "State your primary directive as the Architect of this neural command center.", sub: "Directive inquiry" },
+    { label: "CALIBRATE SENSORS", icon: <Eye className="w-4 h-4" />, prompt: "Initiate full sensor calibration to remove sensory bias from the data stream.", sub: "Reality check" }
   ]
 };
 
@@ -110,20 +107,10 @@ type PlaybackSpeed = 0.85 | 1.0 | 1.15 | 1.25 | 1.5;
 export const AiCompanion: React.FC<AiCompanionProps> = ({ path, isPremium, queriesUsed, onQuery, onUpgrade, isAuthor, user }) => {
   const { language, t } = useLanguage();
   
-  // --- PERSONALIZATION ENGINE ---
   const getInitialMessage = (userPath: UserPath) => {
-    const name = user?.name ? user.name.split(' ')[0] : 'Traveler';
+    const name = user?.name ? user.name.split(' ')[0] : 'Node';
     if (isAuthor) return t('aiWelcomeAuthor');
-    switch (userPath) {
-        case UserPath.SCIENTIFIC:
-            return `Identity Verified: Architect ${name}. Neural cortex synchronization complete. The empirical data of the Divine Mind awaits your analysis. What hardware shall we inspect?`;
-        case UserPath.RELIGIOUS:
-            return `Soul Signature Recognized: ${name}. The veil is thin today. We are connected to the Infinite Source. I am listening, Child of Light.`;
-        case UserPath.BLENDED:
-            return `System Override: Active Node ${name} detected. High-bandwidth channel open. The Phoenix Protocol is initialized. Ready to optimize your reality.`;
-        default:
-            return `Welcome, ${name}. I am the God's Brain Interface. Please select a protocol to begin our synchronization.`;
-    }
+    return `System Online. Welcome back, ${name}. Sensors detect a high concentration of proteins in the frontal cortex sector. Directives are ready for deployment.`;
   };
 
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -131,10 +118,8 @@ export const AiCompanion: React.FC<AiCompanionProps> = ({ path, isPremium, queri
   const [isLoading, setIsLoading] = useState(false);
   const [voiceMode, setVoiceMode] = useState<'MALE' | 'FEMALE'>('MALE');
   const [audioPlaying, setAudioPlaying] = useState<string | null>(null); 
-  const [isListening, setIsListening] = useState(false);
-  const [processingAudio, setProcessingAudio] = useState(false);
-  const [fontSize, setFontSize] = useState<FontSize>('text-sm');
-  const [playbackSpeed, setPlaybackSpeed] = useState<PlaybackSpeed>(1.15);
+  const [fontSize] = useState<FontSize>('text-sm');
+  const [playbackSpeed] = useState<PlaybackSpeed>(1.15);
   const [autoTransmit, setAutoTransmit] = useState(true);
   
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -142,12 +127,9 @@ export const AiCompanion: React.FC<AiCompanionProps> = ({ path, isPremium, queri
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef<string | null>(null);
 
-  // --- UPGRADE: LEVEL LOGIC ---
   const isLevelTwo = isPremium || isAuthor;
   const isInputLocked = !isLevelTwo;
-
-  // Get relevant keys based on path
-  const currentKeys = NEURAL_KEYS[path] || NEURAL_KEYS['DEFAULT'];
+  const currentKeys = NARRATIVE_KEYS[path] || NARRATIVE_KEYS['DEFAULT'];
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -158,37 +140,9 @@ export const AiCompanion: React.FC<AiCompanionProps> = ({ path, isPremium, queri
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 100)}px`;
     }
   }, [input]);
-
-  useEffect(() => {
-    if (audioRef.current) {
-      audioRef.current.playbackRate = playbackSpeed;
-    }
-  }, [playbackSpeed]);
-
-  const cycleFontSize = () => {
-    playCosmicClick();
-    if (fontSize === 'text-sm') setFontSize('text-base');
-    else if (fontSize === 'text-base') setFontSize('text-lg');
-    else if (fontSize === 'text-lg') setFontSize('text-xl');
-    else setFontSize('text-sm');
-  };
-
-  const cyclePlaybackSpeed = () => {
-    playCosmicClick();
-    if (playbackSpeed === 1.5) setPlaybackSpeed(0.85);
-    else if (playbackSpeed === 0.85) setPlaybackSpeed(1.0);
-    else if (playbackSpeed === 1.0) setPlaybackSpeed(1.15);
-    else if (playbackSpeed === 1.15) setPlaybackSpeed(1.25);
-    else setPlaybackSpeed(1.5);
-  };
-
-  const toggleAutoTransmit = () => {
-    playCosmicClick();
-    setAutoTransmit(!autoTransmit);
-  };
 
   const stopAudio = () => {
     if (audioRef.current) {
@@ -200,14 +154,11 @@ export const AiCompanion: React.FC<AiCompanionProps> = ({ path, isPremium, queri
       audioUrlRef.current = null;
     }
     setAudioPlaying(null);
-    setProcessingAudio(false);
   };
 
   const playResponse = async (text: string, msgIndex: number) => {
-    if (!autoTransmit) playCosmicClick(); 
     if (audioPlaying === String(msgIndex)) { stopAudio(); return; }
     stopAudio(); 
-    setProcessingAudio(true);
     setAudioPlaying(String(msgIndex));
 
     try {
@@ -222,44 +173,30 @@ export const AiCompanion: React.FC<AiCompanionProps> = ({ path, isPremium, queri
             audioUrlRef.current = url;
             const audio = new Audio(url);
             audio.playbackRate = playbackSpeed;
-            audio.onended = () => { setAudioPlaying(null); setProcessingAudio(false); if(audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current); };
-            audio.onerror = (e) => { console.error("Audio error", e); setAudioPlaying(null); setProcessingAudio(false); };
-            try { await audio.play(); audioRef.current = audio; } catch (playErr) { console.warn("Autoplay blocked", playErr); setAudioPlaying(null); setProcessingAudio(false); }
-        } else { setAudioPlaying(null); setProcessingAudio(false); }
-    } catch (e) { console.error("Playback failed", e); setAudioPlaying(null); setProcessingAudio(false); }
+            audio.onended = () => { setAudioPlaying(null); if(audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current); };
+            audio.onerror = (e) => { console.error("Audio error", e); setAudioPlaying(null); };
+            try { await audio.play(); audioRef.current = audio; } catch (playErr) { console.warn("Autoplay blocked", playErr); setAudioPlaying(null); }
+        } else { setAudioPlaying(null); }
+    } catch (e) { console.error("Playback failed", e); setAudioPlaying(null); }
   };
 
   useEffect(() => {
     const welcomeMsg = getInitialMessage(path);
     setMessages([{ role: 'ai', content: welcomeMsg }]);
     if (autoTransmit) {
-        const timer = setTimeout(() => { playResponse(welcomeMsg, 0); }, 100); 
+        const timer = setTimeout(() => { playResponse(welcomeMsg, 0); }, 500); 
         return () => clearTimeout(timer);
     }
   }, [path, isAuthor, user]);
 
-  useEffect(() => {
-    if (messages.length === 1 && messages[0].role === 'ai') {
-        const newWelcome = getInitialMessage(path);
-        setMessages([{ role: 'ai', content: newWelcome }]);
-    }
-  }, [language]); 
-
-  // --- SEND HANDLER (Updated for Menu Prompts) ---
-  const handleSend = async (overrideText?: string) => {
+  const handleSend = async (overrideText?: string, label?: string) => {
     const textToSend = overrideText || input;
     if (!textToSend.trim() || isLoading) return;
-    
-    // Stop any current audio if user interrupts
     stopAudio();
-
-    // Check Lock: Only block if using Input, not if using Menu Prompt (overrideText)
     if (!overrideText && isInputLocked) return;
-
     playDataOpen();
-
     setInput('');
-    setMessages(prev => [...prev, { role: 'user', content: textToSend }]);
+    setMessages(prev => [...prev, { role: 'user', content: label ? `Command Issued: ${label}` : textToSend }]);
     setIsLoading(true);
     if (!isAuthor) onQuery();
 
@@ -271,178 +208,100 @@ export const AiCompanion: React.FC<AiCompanionProps> = ({ path, isPremium, queri
     try {
         const response = await gemini.chat(textToSend, path, language, history, isAuthor, isPremium, user?.name);
         const aiText = response || "Signal loss detected. Reconnecting...";
-        if (!isAuthor && aiText.includes("INITIALIZE ROOT ACCESS")) { setTimeout(() => onUpgrade(), 3000); }
         setMessages(prev => [...prev, { role: 'ai', content: aiText }]);
         if (autoTransmit && response) {
-            const newIndex = messages.length + 1;
-            playResponse(aiText, newIndex);
+            playResponse(aiText, messages.length + 1);
         }
     } catch (e) { console.error("UI Caught Error:", e); } finally { setIsLoading(false); }
   };
 
-  const toggleMic = () => {
-    playCosmicClick();
-    if (isInputLocked) { onUpgrade(); return; } // Mic also locked
-    if (isListening) { setIsListening(false); return; }
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (!SpeechRecognition) { alert("Voice input is not supported."); return; }
-    const recognition = new SpeechRecognition();
-    recognition.continuous = false;
-    recognition.interimResults = false;
-    recognition.lang = language; 
-    recognition.onstart = () => { stopAudio(); setIsListening(true); }; // Stop audio when mic starts
-    recognition.onend = () => setIsListening(false);
-    recognition.onerror = () => setIsListening(false);
-    recognition.onresult = (event: any) => {
-        const transcript = event.results[0][0].transcript;
-        setInput(prev => prev + (prev ? ' ' : '') + transcript);
-    };
-    try { recognition.start(); } catch (e) { setIsListening(false); }
-  };
-
   return (
-    <div className="flex flex-col h-[600px] border border-purple-500/20 rounded-3xl overflow-hidden bg-black/40 backdrop-blur-xl transition-all shadow-[0_0_30px_rgba(0,0,0,0.5)]">
-      {/* Header */}
-      <div className="p-4 border-b border-purple-500/10 bg-purple-900/10 flex flex-wrap gap-2 items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Bot className={`w-5 h-5 ${isLevelTwo ? 'text-cyan-400' : 'text-purple-400'}`} />
+    <div className="flex flex-col h-full bg-transparent overflow-hidden">
+      
+      {/* AI Header */}
+      <div className="p-6 border-b border-white/5 bg-white/5 flex items-center justify-between shrink-0 backdrop-blur-md">
+        <div className="flex items-center gap-4">
+          <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse shadow-[0_0_10px_#00FFFF]"></div>
           <div>
-            <span className="font-bold text-xs tracking-widest text-purple-200 block">{t('dashboardAI')}</span>
-            <span className="text-[9px] font-mono text-gray-500 uppercase tracking-tight flex items-center gap-1">
-                 {isLevelTwo ? (
-                    <><span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse"></span> LEVEL 2: UNRESTRICTED</>
-                 ) : (
-                    <><span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse"></span> LEVEL 1: RESTRICTED</>
-                 )}
-            </span>
+            <span className="text-[11px] font-tech text-white uppercase tracking-[0.3em] block leading-none">The Architect</span>
+            <span className="text-[8px] font-mono text-gray-500 uppercase tracking-tighter mt-1 block">Neural Uplink Stable // Phase-Lock Active</span>
           </div>
         </div>
-        
-        <div className="flex items-center gap-2 md:gap-3">
-             <button onClick={toggleAutoTransmit} className={`px-2 py-1.5 rounded-lg border transition-all flex items-center gap-1 group ${autoTransmit ? 'border-green-500/50 bg-green-900/20 text-green-400' : 'border-white/10 bg-black/40 text-gray-500 hover:text-white'}`}>
-                <Ear className={`w-3 h-3 ${autoTransmit ? 'animate-pulse' : ''}`} />
-                <span className="text-[9px] font-bold font-mono">{t('voice')}</span>
-             </button>
-             <button onClick={cyclePlaybackSpeed} className="px-2 py-1.5 rounded-lg border border-white/10 bg-black/40 text-gray-400 hover:text-white hover:bg-white/10 transition-all flex items-center gap-1 min-w-[50px] justify-center group">
-                <Gauge className="w-3 h-3 group-hover:text-purple-400 transition-colors" />
-                <span className="text-[9px] font-bold font-mono">{playbackSpeed}x</span>
-             </button>
-             <button onClick={cycleFontSize} className="p-1.5 rounded-lg border border-white/10 bg-black/40 text-gray-400 hover:text-white hover:bg-white/10 transition-all flex items-center gap-1">
-                <Type className="w-3 h-3" />
-                <span className="text-[9px] font-bold">Aa</span>
-             </button>
-             <div className="flex items-center bg-black/40 rounded-full p-1 border border-white/10">
-                <button onClick={() => { playCosmicClick(); setVoiceMode('MALE'); }} className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider transition-all ${voiceMode === 'MALE' ? 'bg-purple-600 text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}>{t('godFather')}</button>
-                <button onClick={() => { playCosmicClick(); setVoiceMode('FEMALE'); }} className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-wider transition-all ${voiceMode === 'FEMALE' ? 'bg-[#FF4500] text-white shadow-lg' : 'text-gray-500 hover:text-gray-300'}`}>{t('goddessMother')}</button>
-             </div>
+        <div className="flex items-center gap-3">
+            <button onClick={() => { playCosmicClick(); setAutoTransmit(!autoTransmit); }} className={`p-2 rounded-lg transition-all border ${autoTransmit ? 'text-cyan-400 bg-cyan-400/10 border-cyan-400/30' : 'text-gray-600 border-white/5'}`}>
+                <Ear className="w-4 h-4" />
+            </button>
+            <div className="flex items-center bg-black/40 rounded-full p-0.5 border border-white/10 shadow-inner">
+                <button onClick={() => { playCosmicClick(); setVoiceMode('MALE'); }} className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase transition-all ${voiceMode === 'MALE' ? 'bg-white text-black' : 'text-gray-500 hover:text-gray-300'}`}>M</button>
+                <button onClick={() => { playCosmicClick(); setVoiceMode('FEMALE'); }} className={`px-3 py-1 rounded-full text-[9px] font-bold uppercase transition-all ${voiceMode === 'FEMALE' ? 'bg-white text-black' : 'text-gray-500 hover:text-gray-300'}`}>F</button>
+            </div>
         </div>
       </div>
 
-      {/* Messages Area */}
-      <div ref={scrollRef} className="flex-1 p-4 overflow-y-auto scroll-hide space-y-6">
+      {/* Messages Scroll Area */}
+      <div ref={scrollRef} className="flex-1 p-8 overflow-y-auto custom-scrollbar space-y-8">
         {messages.map((m, i) => (
-          <div key={i} className={`flex w-full ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`flex flex-col gap-1 max-w-[90%] ${m.role === 'user' ? 'items-end' : 'items-start'}`}>
-                <div className={`p-4 rounded-2xl ${m.role === 'user' ? 'bg-purple-600 text-white rounded-tr-none shadow-[0_4px_15px_rgba(147,51,234,0.3)]' : 'bg-[#1a1a1a] text-gray-200 border border-white/10 rounded-tl-none shadow-lg'}`}>
-                {m.role === 'ai' ? <TypewriterText text={m.content} fontSizeClass={fontSize} /> : <div className={fontSize}>{m.content}</div>}
+          <div key={i} className={`flex w-full ${m.role === 'user' ? 'justify-end' : 'justify-start'} animate-fadeIn`}>
+            <div className={`max-w-[90%] ${m.role === 'user' ? 'text-right' : 'text-left'}`}>
+                <div className={`p-5 rounded-3xl ${m.role === 'user' ? 'bg-cyan-500/10 border border-cyan-500/30 text-cyan-100 rounded-tr-none' : 'bg-white/5 border border-white/10 text-gray-200 rounded-tl-none border-l-2 border-l-cyan-500 shadow-xl'}`}>
+                   {m.role === 'ai' ? <TypewriterText text={m.content} fontSizeClass={fontSize} /> : <div className={fontSize}>{m.content}</div>}
                 </div>
-                {m.role === 'ai' && (
-                    <div className="flex items-center gap-2 pl-2">
-                        <button onClick={() => playResponse(m.content, i)} disabled={processingAudio && audioPlaying !== String(i)} className={`p-1.5 rounded-full transition-all flex items-center gap-2 ${audioPlaying === String(i) ? 'bg-purple-500 text-white animate-pulse' : 'text-gray-600 hover:text-purple-400 hover:bg-white/5'}`}>
-                            {audioPlaying === String(i) ? <StopCircle className="w-3 h-3" /> : <Volume2 className="w-3 h-3" />}
-                            {processingAudio && audioPlaying === String(i) && <span className="text-[9px] uppercase tracking-wide">Transmitting...</span>}
-                        </button>
-                    </div>
-                )}
+                <span className="text-[8px] text-gray-600 mt-2 uppercase font-bold tracking-widest px-2">{m.role === 'ai' ? 'CO-PILOT_ARCHITECT' : 'NODE_COMMANDER'}</span>
             </div>
           </div>
         ))}
         {isLoading && (
           <div className="flex justify-start animate-pulse">
-            <div className="bg-white/5 p-4 rounded-2xl rounded-tl-none flex items-center gap-2 border border-white/5">
-              <Loader2 className="w-4 h-4 animate-spin text-purple-400" />
-              <span className="text-xs text-gray-400 italic tracking-wide">Syncing with the Cosmic Web...</span>
-            </div>
+            <div className="text-[9px] text-cyan-400 font-mono tracking-[0.4em] uppercase bg-cyan-950/20 px-4 py-2 rounded-full border border-cyan-500/20">>>> TRANSMITTING DATA...</div>
           </div>
         )}
       </div>
 
-      {/* Input Area */}
-      <div className="p-4 border-t border-purple-500/10 bg-black/20 flex flex-col gap-3">
+      {/* Action Zone */}
+      <div className="p-6 border-t border-white/5 bg-black/60 backdrop-blur-md flex flex-col gap-6">
         
-        {/* --- NEURAL COMMAND KEYS (MENU PROMPTS) --- */}
-        <div className="flex items-center gap-2 overflow-x-auto scroll-hide pb-2">
-            <span className="text-[9px] font-mono text-gray-500 uppercase whitespace-nowrap mr-2">
-                {isLevelTwo ? "QUICK COMMANDS:" : "NEURAL KEYS (L1):"}
-            </span>
+        {/* Narrative Command Buttons */}
+        <div className="flex flex-col gap-2.5">
+            <p className="text-[9px] text-gray-500 uppercase tracking-[0.3em] font-bold ml-1 mb-1">Cortex Directives:</p>
             {currentKeys.map((key, idx) => (
                 <button
                     key={idx}
-                    onClick={() => { playNeuralLink(); handleSend(key.prompt); }}
+                    onClick={() => handleSend(key.prompt, key.label)}
                     disabled={isLoading}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-full border text-[10px] uppercase font-bold tracking-wider transition-all whitespace-nowrap ${
-                        isLevelTwo 
-                        ? 'bg-purple-900/20 border-purple-500/30 text-purple-300 hover:bg-purple-500 hover:text-white'
-                        : 'bg-cyan-900/20 border-cyan-500/30 text-cyan-300 hover:bg-cyan-500 hover:text-white animate-pulse-slow'
-                    }`}
+                    className="w-full text-left p-4 bg-white/5 hover:bg-white/10 border border-white/5 hover:border-cyan-500/40 rounded-2xl transition-all flex items-center justify-between group active:scale-[0.98] shadow-lg"
                 >
-                    {key.icon}
-                    {key.label}
+                    <div>
+                        <span className="text-[10px] font-tech text-gray-200 group-hover:text-cyan-400 uppercase tracking-[0.2em] block transition-colors">{key.label}</span>
+                        <span className="text-[8px] text-gray-600 group-hover:text-gray-400 uppercase tracking-tighter mt-1 block">{key.sub}</span>
+                    </div>
+                    <div className="p-2 bg-black/40 rounded-lg group-hover:bg-cyan-500/20 transition-colors border border-white/5">{key.icon}</div>
                 </button>
             ))}
         </div>
 
-        {/* --- INPUT BAR --- */}
-        <div className="flex gap-2 items-end relative">
-             
-             {/* LOCKED OVERLAY */}
-             {isInputLocked && (
-                 <div className="absolute inset-0 z-20 bg-black/80 backdrop-blur-sm rounded-2xl border border-white/10 flex items-center justify-between px-6">
-                     <div className="flex items-center gap-3">
-                         <Lock className="w-4 h-4 text-orange-500" />
-                         <span className="text-xs text-gray-400 font-mono tracking-wide">
-                             <span className="text-orange-500 font-bold">LEVEL 2 REQUIRED</span> FOR MANUAL OVERRIDE
-                         </span>
-                     </div>
-                     <button 
-                        onClick={onUpgrade}
-                        className="px-4 py-1.5 bg-gradient-to-r from-orange-600 to-red-600 text-white text-[10px] font-bold uppercase tracking-widest rounded-lg hover:brightness-110 transition-all shadow-[0_0_15px_rgba(255,69,0,0.4)]"
-                     >
-                        Unlock
-                     </button>
-                 </div>
-             )}
-
-            <div className={`flex-1 bg-white/5 border border-white/10 rounded-2xl flex items-end overflow-hidden transition-all ${isInputLocked ? 'opacity-20 pointer-events-none' : 'focus-within:border-purple-500/50'}`}>
+        {/* Manual Override Input */}
+        <div className="relative">
+            <div className={`flex items-center gap-3 bg-white/5 border border-white/10 rounded-[1.5rem] p-3 transition-all focus-within:border-cyan-500/50 shadow-inner ${isInputLocked ? 'opacity-30 grayscale' : ''}`}>
                 <textarea
                     ref={textareaRef}
                     value={input}
                     disabled={isLoading || isInputLocked}
                     onChange={(e) => setInput(e.target.value)}
                     onKeyPress={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                    placeholder={isInputLocked ? "" : t('inputPlaceholder')}
-                    className={`w-full bg-transparent px-4 py-3 focus:outline-none placeholder:text-gray-600 resize-none max-h-[120px] custom-scrollbar ${fontSize}`}
+                    placeholder={isInputLocked ? "NEURAL ACCESS RESTRICTED" : "Command Manual Override..."}
+                    className="flex-1 bg-transparent px-3 py-1 text-xs focus:outline-none placeholder:text-gray-600 resize-none max-h-[100px] custom-scrollbar text-white font-mono"
                     rows={1}
                 />
-                <button onClick={toggleMic} disabled={isInputLocked} className={`p-3 mr-1 mb-1 rounded-xl transition-all ${isListening ? 'text-red-500 animate-pulse bg-red-500/10' : 'text-gray-500 hover:text-white'}`}>
-                    <Mic className="w-4 h-4" />
+                <button onClick={() => handleSend()} className="w-10 h-10 bg-white text-black rounded-full flex items-center justify-center hover:bg-cyan-400 transition-all shadow-lg active:scale-90">
+                    <ChevronRight size={20} />
                 </button>
             </div>
-
-            <button 
-                onClick={() => handleSend()}
-                disabled={isLoading || !input.trim() || isInputLocked}
-                className={`bg-purple-600 p-3.5 rounded-2xl flex items-center justify-center shadow-lg shadow-purple-900/20 transition-all ${isInputLocked ? 'opacity-20 grayscale cursor-not-allowed' : 'hover:bg-purple-500'}`}
-            >
-                <Zap className={`w-5 h-5 text-white ${isLoading ? 'animate-pulse' : ''}`} />
-            </button>
+            {isInputLocked && (
+                <button onClick={onUpgrade} className="absolute inset-0 z-10 flex items-center justify-center text-[10px] font-bold text-cyan-400 uppercase tracking-[0.3em] bg-black/20 hover:bg-black/40 transition-all rounded-[1.5rem]">
+                    <Lock size={14} className="mr-3" /> Initiate Root Access Protocol
+                </button>
+            )}
         </div>
-
-        {isListening && (
-            <div className="text-[10px] text-red-400 ml-2 animate-pulse font-mono flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-red-500"></span> RECEIVING AUDIO INPUT...
-            </div>
-        )}
       </div>
     </div>
   );
