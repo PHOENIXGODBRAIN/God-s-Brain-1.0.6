@@ -7,7 +7,8 @@ export class GeminiService {
   private ai: GoogleGenAI;
 
   constructor() {
-    this.ai = new GoogleGenAI({ apiKey: (process.env.API_KEY as string) });
+    // Correctly initialize with named apiKey parameter as per guidelines
+    this.ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   }
 
   async chat(
@@ -42,6 +43,7 @@ export class GeminiService {
         },
       });
 
+      // Directly access .text property from GenerateContentResponse as per guidelines
       return response.text;
     } catch (error: any) {
       // HANDLE QUOTA / RATE LIMITING GRACEFULLY
@@ -81,6 +83,7 @@ export class GeminiService {
         },
       });
 
+      // Correctly extracting binary data from candidate part
       return response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || null;
     } catch (error: any) {
       if (error?.message?.includes('quota') || error?.status === 'RESOURCE_EXHAUSTED') {

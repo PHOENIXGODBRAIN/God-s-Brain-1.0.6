@@ -4,6 +4,7 @@ import { UserPath, UserProfile, UserRecord } from './types';
 import { Dashboard } from './components/Dashboard';
 import { GlobalBackgroundAudio } from './components/GlobalBackgroundAudio';
 import { LanguageProvider } from './contexts/LanguageContext';
+import { ProgressionProvider } from './contexts/ProgressionContext';
 import { CosmicBackground } from './components/CosmicBackground';
 
 // Onboarding Components
@@ -18,6 +19,15 @@ import { WarpScreen } from './components/WarpScreen';
 
 type OnboardingStep = 'PORTAL' | 'SHOWCASE' | 'INIT' | 'REVEAL' | 'SKILL_INIT' | 'SYNTHESIS' | 'WARP' | 'BUILDER' | 'COMPLETE';
 
+const ARCHETYPE_COLORS: Record<string, string> = {
+    'SCIENTIST': '#00FFFF',
+    'ARCHITECT': '#F43F5E',
+    'MYSTIC': '#FFD700',
+    'SEEKER': '#F97316',
+    'ALCHEMIST': '#10B981',
+    'ACTIVE_NODE': '#A855F7'
+};
+
 const AppContent: React.FC = () => {
   const [path, setPath] = useState<UserPath>(UserPath.NONE);
   const [isPremium, setIsPremium] = useState(false);
@@ -29,6 +39,7 @@ const AppContent: React.FC = () => {
   
   // Onboarding State
   const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>('PORTAL');
+  const [warpTarget, setWarpTarget] = useState<OnboardingStep>('SHOWCASE');
   const [isTransitioning, setIsTransitioning] = useState(false); 
   const [nextStep, setNextStep] = useState<OnboardingStep | null>(null); 
   const [transitionTitle, setTransitionTitle] = useState("IDENTITY VERIFICATION");
@@ -55,6 +66,16 @@ const AppContent: React.FC = () => {
     localStorage.setItem('gb_user_database', JSON.stringify(db));
   };
 
+  // --- DYNAMIC UI COLOR SYNC ---
+  useEffect(() => {
+    if (userProfile?.archetype) {
+        const color = ARCHETYPE_COLORS[userProfile.archetype] || '#00FFFF';
+        const root = document.documentElement;
+        root.style.setProperty('--path-color', color);
+        root.style.setProperty('--path-glow', color + '4D'); // 30% alpha for glow
+    }
+  }, [userProfile?.archetype]);
+
   // --- INITIALIZATION ---
   useEffect(() => {
     const savedPath = localStorage.getItem('gb_path') as UserPath;
@@ -71,13 +92,18 @@ const AppContent: React.FC = () => {
          setQueriesUsed(record.queriesUsed);
          setIsPremium(record.isPremium);
          
-         if (record.profile.email === 'architect@source.code' || record.profile.email === 'admin@godsbrain.com') {
+         const isAdmin = record.profile.email === 'architect@source.code' || 
+                         record.profile.email === 'admin@godsbrain.com' || 
+                         record.profile.email === 'phoenix';
+
+         if (isAdmin) {
              setIsAuthor(true);
-         }
-         
-         if (savedPath && Object.values(UserPath).includes(savedPath)) {
+             console.log("🐦 PHOENIX PROTOCOL ENGAGED: Forcing Portal start for Developer testing...");
+             // RESET ALL PROGRESS FOR THE DEVELOPER ON REFRESH
+             setOnboardingStep('PORTAL'); 
+         } else if (savedPath && Object.values(UserPath).includes(savedPath)) {
             setPath(savedPath);
-            setOnboardingStep('COMPLETE');
+            setOnboardingStep('COMPLETE'); 
          } else {
              setOnboardingStep('SHOWCASE');
          }
@@ -133,7 +159,9 @@ const AppContent: React.FC = () => {
         name: email.split('@')[0],
         email: email,
         provider: 'email',
-        avatar: undefined
+        avatar: undefined,
+        level: 1,
+        xp: 0
     };
 
     const db = getUserDB();
@@ -158,12 +186,9 @@ const AppContent: React.FC = () => {
     if (email === 'architect@source.code' || email === 'admin@godsbrain.com' || email === 'phoenix') {
         handleAuthorLogin(); 
     } else {
-        triggerTransition('SHOWCASE', "IDENTITY VERIFICATION", [
-            "Establishing secure neural uplink...",
-            "INITIALIZING SECURE GATEWAY...",
-            "Protocol: TLS 1.3 / AES-256 / 4096-bit RSA",
-            "Handshake Complete."
-        ]);
+        setWarpTarget('SHOWCASE');
+        setWarpColor('cyan');
+        setOnboardingStep('WARP');
     }
   };
   
@@ -177,10 +202,22 @@ const AppContent: React.FC = () => {
 
   const handleManualArchetypeSelect = (id: string, skill: string) => {
       let selectedPath = UserPath.BLENDED;
-      if (['SCIENTIST', 'ARCHITECT'].includes(id)) selectedPath = UserPath.SCIENTIFIC;
-      if (['MYSTIC', 'SEEKER'].includes(id)) selectedPath = UserPath.RELIGIOUS;
+      let colorName = 'purple';
+      
+      if (['SCIENTIST', 'ARCHITECT'].includes(id)) {
+          selectedPath = UserPath.SCIENTIFIC;
+          colorName = id === 'SCIENTIST' ? 'cyan' : 'rose';
+      }
+      if (['MYSTIC', 'SEEKER'].includes(id)) {
+          selectedPath = UserPath.RELIGIOUS;
+          colorName = id === 'MYSTIC' ? 'amber' : 'orange';
+      }
+      if (id === 'ALCHEMIST') {
+          colorName = 'green';
+      }
       
       setPath(selectedPath);
+      setWarpColor(colorName);
       localStorage.setItem('gb_path', selectedPath);
       setArchetypeKey(id);
 
@@ -257,11 +294,12 @@ const AppContent: React.FC = () => {
   };
 
   const handleFinalAccept = () => {
+      setWarpTarget('BUILDER');
       setOnboardingStep('WARP');
   };
 
   const handleWarpComplete = () => {
-      setOnboardingStep('BUILDER');
+      setOnboardingStep(warpTarget);
   };
 
   const handleBuilderComplete = (avatarUrl: string) => {
@@ -289,7 +327,9 @@ const AppContent: React.FC = () => {
         name: 'The Phoenix',
         email: 'architect@source.code',
         provider: 'email',
-        avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=Phoenix'
+        avatar: 'https://api.dicebear.com/7.x/bottts/svg?seed=Phoenix',
+        level: 99,
+        xp: 0
     };
     
     setIsAuthor(true);
@@ -305,12 +345,10 @@ const AppContent: React.FC = () => {
     saveUserDB(db);
     localStorage.setItem('gb_auth_token', `neural_token_${authorProfile.email}_${Date.now()}`);
 
-    triggerTransition('COMPLETE', "PHOENIX PROTOCOL RECOGNIZED", [
-        "Identity Confirmed: SUPREME NODE.",
-        "Bypassing Calibration Sequence...",
-        "Unlocking Root Access...",
-        "Welcome Home, Architect."
-    ]);
+    // GO TO SHOWCASE INSTEAD OF COMPLETE FOR THE AUTHOR TO ALLOW TESTING THE FLOW
+    setWarpTarget('SHOWCASE');
+    setWarpColor('amber');
+    setOnboardingStep('WARP');
   };
 
   const handleLogout = () => {
@@ -335,96 +373,98 @@ const AppContent: React.FC = () => {
   if (!isLoaded) return null;
 
   return (
-    <div className="h-screen w-screen text-[#e0f2fe] font-sans relative overflow-hidden bg-transparent">
+    <div className="h-screen w-screen text-[#e0f2fe] font-sans relative overflow-hidden bg-black">
       
       <CosmicBackground path={path} />
       <GlobalBackgroundAudio autoPlay={true} />
       
-      {isTransitioning && (
-          <TransitionScreen 
-              onComplete={handleTransitionComplete} 
-              title={transitionTitle} 
-              steps={transitionSteps}
-          />
-      )}
+      <ProgressionProvider user={userProfile} onUpdate={handleUpdateProfile}>
+          {isTransitioning && (
+              <TransitionScreen 
+                  onComplete={handleTransitionComplete} 
+                  title={transitionTitle} 
+                  steps={transitionSteps}
+              />
+          )}
 
-      {onboardingStep === 'WARP' && (
-          <WarpScreen color={warpColor} onComplete={handleWarpComplete} />
-      )}
+          {onboardingStep === 'WARP' && (
+              <WarpScreen color={warpColor} onComplete={handleWarpComplete} />
+          )}
 
-      <div className="relative z-10 h-full w-full overflow-hidden">
-        {onboardingStep === 'PORTAL' && (
-            <LoginPortal onLoginSuccess={handleLoginSuccess} />
-        )}
-        
-        {onboardingStep === 'SHOWCASE' && userProfile && (
-            <ArchetypeShowcase 
-                onContinue={handleShowcaseContinue}
-                onManualSelect={handleManualArchetypeSelect}
-            />
-        )}
-        
-        {onboardingStep === 'INIT' && userProfile && (
-            <NeuralInit 
-                mode="ARCHETYPE"
-                userName={userProfile.name} 
-                onComplete={handleArchetypeCalibrationComplete} 
-                onBack={handleGoBack}
-            />
-        )}
+          <div className="relative z-10 h-full w-full overflow-hidden">
+            {onboardingStep === 'PORTAL' && (
+                <LoginPortal onLoginSuccess={handleLoginSuccess} />
+            )}
+            
+            {onboardingStep === 'SHOWCASE' && userProfile && (
+                <ArchetypeShowcase 
+                    onContinue={handleShowcaseContinue}
+                    onManualSelect={handleManualArchetypeSelect}
+                />
+            )}
+            
+            {onboardingStep === 'INIT' && userProfile && (
+                <NeuralInit 
+                    mode="ARCHETYPE"
+                    userName={userProfile.name} 
+                    onComplete={handleArchetypeCalibrationComplete} 
+                    onBack={handleGoBack}
+                />
+            )}
 
-        {onboardingStep === 'REVEAL' && (
-            <ArchetypeReveal 
-                profile={calibrationProfile} 
-                onAccept={handleAcceptArchetype} 
-                onBack={handleGoBack}
-            />
-        )}
+            {onboardingStep === 'REVEAL' && (
+                <ArchetypeReveal 
+                    profile={calibrationProfile} 
+                    onAccept={handleAcceptArchetype} 
+                    onBack={handleGoBack}
+                />
+            )}
 
-        {onboardingStep === 'SKILL_INIT' && userProfile && (
-            <NeuralInit 
-                mode="SKILL"
-                userName={userProfile.name} 
-                onComplete={handleSkillCalibrationComplete} 
-                onBack={handleGoBack}
-                existingProfile={calibrationProfile}
-            />
-        )}
+            {onboardingStep === 'SKILL_INIT' && userProfile && (
+                <NeuralInit 
+                    mode="SKILL"
+                    userName={userProfile.name} 
+                    onComplete={handleSkillCalibrationComplete} 
+                    onBack={handleGoBack}
+                    existingProfile={calibrationProfile}
+                />
+            )}
 
-        {onboardingStep === 'SYNTHESIS' && (
-            <FinalReveal 
-                profile={calibrationProfile} 
-                onAccept={handleFinalAccept} 
-                onBack={handleGoBack}
-            />
-        )}
+            {onboardingStep === 'SYNTHESIS' && (
+                <FinalReveal 
+                    profile={calibrationProfile} 
+                    onAccept={handleFinalAccept} 
+                    onBack={handleGoBack}
+                />
+            )}
 
-        {onboardingStep === 'BUILDER' && (
-            <NeuronBuilder 
-                archetype={archetypeKey} 
-                onComplete={handleBuilderComplete} 
+            {onboardingStep === 'BUILDER' && (
+                <NeuronBuilder 
+                    archetype={archetypeKey} 
+                    onComplete={handleBuilderComplete} 
+                    onUpdateProfile={handleUpdateProfile}
+                    onBack={handleGoBack}
+                    isUnlocked={effectiveIsPremium}
+                />
+            )}
+
+            {onboardingStep === 'COMPLETE' && (
+              <Dashboard 
+                path={path} 
+                isPremium={effectiveIsPremium} 
+                onPremiumToggle={handlePremiumToggle}
+                onLogout={handleLogout} 
+                isAuthor={isAuthor}
+                onAuthorLogin={handleAuthorLogin}
+                user={userProfile}
                 onUpdateProfile={handleUpdateProfile}
-                onBack={handleGoBack}
-                isUnlocked={effectiveIsPremium}
-            />
-        )}
-
-        {onboardingStep === 'COMPLETE' && (
-          <Dashboard 
-            path={path} 
-            isPremium={effectiveIsPremium} 
-            onPremiumToggle={handlePremiumToggle}
-            onLogout={handleLogout} 
-            isAuthor={isAuthor}
-            onAuthorLogin={handleAuthorLogin}
-            user={userProfile}
-            onUpdateProfile={handleUpdateProfile}
-            queriesUsed={queriesUsed}
-            onQuery={handleQueryIncrement}
-            onEditNeuron={handleEditNeuron}
-          />
-        )}
-      </div>
+                queriesUsed={queriesUsed}
+                onQuery={handleQueryIncrement}
+                onEditNeuron={handleEditNeuron}
+              />
+            )}
+          </div>
+      </ProgressionProvider>
 
       <style>{`
         @keyframes scaleIn {

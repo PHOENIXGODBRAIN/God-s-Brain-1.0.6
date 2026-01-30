@@ -8,6 +8,11 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Orbitron:wght@400;500;700;900&family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --path-color: #00FFFF;
+            --path-glow: rgba(0, 255, 255, 0.5);
+        }
+        
         body {
             font-family: 'Inter', sans-serif;
             background-color: #000000;
@@ -25,27 +30,42 @@
             font-family: 'Plus Jakarta Sans', sans-serif;
         }
         .synaptic-glow {
-            box-shadow: 0 0 15px #00FFFF, inset 0 0 10px #00FFFF;
-        }
-        .phoenix-glow {
-            box-shadow: 0 0 20px #FF4500, inset 0 0 10px #FF4500;
+            box-shadow: 0 0 15px var(--path-color), inset 0 0 10px var(--path-color);
         }
         .bg-grid-pattern {
             background-image: linear-gradient(to right, #ffffff05 1px, transparent 1px),
             linear-gradient(to bottom, #ffffff05 1px, transparent 1px);
             background-size: 40px 40px;
         }
+        
+        /* DYNAMIC SCROLLBARS */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.8);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: var(--path-color);
+            border-radius: 10px;
+            box-shadow: 0 0 10px var(--path-glow);
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #ffffff;
+        }
+
         .scroll-hide::-webkit-scrollbar {
             display: none;
         }
         
         /* CONTENT PROTECTION PROTOCOL */
         .protected-content {
-            -webkit-user-select: none; /* Safari */
-            -moz-user-select: none; /* Firefox */
-            -ms-user-select: none; /* IE10+/Edge */
-            user-select: none; /* Standard */
-            -webkit-touch-callout: none; /* iOS Safari */
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
         }
         
         @keyframes pulse-slow {
@@ -54,6 +74,19 @@
         }
         .animate-pulse-slow {
             animation: pulse-slow 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+        }
+
+        /* CUSTOM PATH BORDERS */
+        .path-border {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: border 0.5s ease;
+        }
+        .path-border:hover {
+            border-color: var(--path-color);
+        }
+        .path-border-active {
+            border-color: var(--path-color) !important;
+            box-shadow: 0 0 20px var(--path-glow);
         }
     </style>
 <script type="importmap">

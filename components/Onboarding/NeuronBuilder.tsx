@@ -1,7 +1,8 @@
 
 import React, { useRef, useEffect, useState, useCallback, useMemo } from 'react';
 import { playNeuralLink, playCosmicClick, playError, playMenuSelect, playDataOpen } from '../../utils/sfx';
-import { ArrowLeft, Dna, Lock, Zap, Activity, Sun, Network, RotateCw, ZoomIn, ZoomOut, Layers, Eye, Maximize2, Minimize2, Triangle, Waves, Grip, CircleDashed, Wind, Dice5, RefreshCw, Compass } from 'lucide-react';
+// Added Triangle to the imports from lucide-react
+import { ArrowLeft, Dna, Lock, Zap, Activity, Sun, Network, RotateCw, Layers, Eye, Minimize2, Waves, Grip, CircleDashed, Wind, Dice5, RefreshCw, Compass, Minus, Plus, Triangle } from 'lucide-react';
 import { UserProfile } from '../../types';
 
 interface NeuronBuilderProps {
@@ -27,8 +28,8 @@ export const NeuronBuilder: React.FC<NeuronBuilderProps> = ({ archetype, onCompl
   const getTheme = () => {
       const base = {
           SCIENTIST: { color: '#00FFFF', label: 'THE SCIENTIST' },
-          MYSTIC: { color: '#FFD700', label: 'THE MYSTIC' }, // FIXED: Gold
-          ACTIVE_NODE: { color: '#A855F7', label: 'ACTIVE NODE' }, // FIXED: Purple
+          MYSTIC: { color: '#FFD700', label: 'THE MYSTIC' },
+          ACTIVE_NODE: { color: '#A855F7', label: 'ACTIVE NODE' },
           ARCHITECT: { color: '#F43F5E', label: 'THE ARCHITECT' }, 
           SEEKER: { color: '#F97316', label: 'THE SEEKER' },
           ALCHEMIST: { color: '#10B981', label: 'THE ALCHEMIST' }
@@ -88,7 +89,6 @@ export const NeuronBuilder: React.FC<NeuronBuilderProps> = ({ archetype, onCompl
   const [zoom, setZoom] = useState(1.2); 
   const isDraggingRef = useRef(false);
   const lastMouseXRef = useRef(0);
-  const touchDistRef = useRef<number | null>(null);
   const [activeTab, setActiveTab] = useState<'STRUCTURE' | 'SURFACE' | 'MOTION' | 'MUTATION'>('STRUCTURE');
 
   useEffect(() => {
@@ -183,7 +183,7 @@ export const NeuronBuilder: React.FC<NeuronBuilderProps> = ({ archetype, onCompl
         time += 0.05;
         const trailLimit = isUnlocked ? (trailLevel / 100 * 0.60) : (Math.min(trailLevel, 25) / 100 * 0.60);
         const trailAlpha = 0.68 - trailLimit; 
-        if (trailLimit > 0) { ctx.fillStyle = `rgba(5, 5, 5, ${trailAlpha})`; ctx.fillRect(0, 0, canvas.width, canvas.height); } 
+        if (trailLimit > 0) { ctx.fillStyle = `rgba(0, 0, 0, ${trailAlpha})`; ctx.fillRect(0, 0, canvas.width, canvas.height); } 
         else { ctx.clearRect(0, 0, canvas.width, canvas.height); }
         const cx = canvas.width / 2;
         const cy = canvas.height / 2;
@@ -307,71 +307,141 @@ export const NeuronBuilder: React.FC<NeuronBuilderProps> = ({ archetype, onCompl
       const activeCap = isUnlocked ? 100 : maxCap;
       return (
         <div className={`space-y-2 relative group ${locked && !isUnlocked ? 'opacity-40 grayscale' : 'opacity-100'}`}>
-            <div className="flex justify-between text-[10px] uppercase font-bold text-gray-400">
-                <span className="flex items-center gap-2">{icon} {label}</span>
-                <span className="flex items-center gap-2 font-mono">{(!isUnlocked && val >= maxCap) && <Lock className="w-3 h-3 text-red-500" />}{displayVal}</span>
+            <div className="flex justify-between text-[9px] uppercase font-bold text-gray-500">
+                <span className="flex items-center gap-2 group-hover:text-white transition-colors">{icon} {label}</span>
+                <span className="flex items-center gap-2 font-mono text-[11px]" style={{ color: theme.color }}>{(!isUnlocked && val >= maxCap) && <Lock className="w-3 h-3 text-red-500" />}{displayVal}</span>
             </div>
-            <div className="relative w-full h-4 flex items-center">
-                <div className="absolute left-0 w-full h-2 bg-black/60 border border-white/5 rounded-full overflow-hidden pointer-events-none">
+            <div className="relative w-full h-5 flex items-center">
+                <div className="absolute left-0 w-full h-2 bg-black/60 border border-white/10 rounded-full overflow-hidden pointer-events-none">
                     {!isUnlocked && maxCap < 100 && <div className="absolute top-0 right-0 h-full bg-red-900/30 border-l border-red-500/40" style={{ width: `${100 - maxCap}%` }} />}
-                    <div className="absolute top-0 left-0 h-full bg-gradient-to-r from-cyan-900 to-cyan-500" style={{ width: `${val}%` }} />
+                    <div className="absolute top-0 left-0 h-full opacity-60" style={{ width: `${val}%`, background: `linear-gradient(to right, transparent, ${theme.color})` }} />
                 </div>
-                <input type="range" min="0" max="100" value={val} onChange={(e) => handleSliderChange(parseInt(e.target.value), setter, activeCap, locked)} onMouseDown={() => playMenuSelect()} className="w-full h-full opacity-0 cursor-ew-resize z-20" />
-                <div className="absolute w-4 h-4 bg-white rounded-full border-2 border-black shadow-[0_0_15px_white] pointer-events-none z-10" style={{ left: `calc(${val}% - 8px)` }} />
+                <input 
+                    type="range" 
+                    min="0" 
+                    max="100" 
+                    value={val} 
+                    onChange={(e) => handleSliderChange(parseInt(e.target.value), setter, activeCap, locked)} 
+                    onMouseDown={() => playMenuSelect()} 
+                    className="w-full h-full opacity-0 cursor-ew-resize z-20 relative" 
+                />
+                <div 
+                    className="absolute w-4 h-4 bg-white rounded-full border-2 border-black pointer-events-none z-10 transition-transform group-active:scale-125" 
+                    style={{ 
+                        left: `calc(${val}% - 8px)`,
+                        boxShadow: `0 0 15px ${theme.color}, 0 0 5px white`
+                    }} 
+                />
             </div>
         </div>
       );
   };
 
+  const nameInputShadow = `0 4px 25px ${theme.color}cc, 0 8px 50px ${theme.color}88`;
+
   return (
-    <div className="absolute inset-0 w-full h-full bg-[#050505] flex flex-col landscape:flex-row text-[#e0f2fe] font-mono overflow-hidden select-none">
-      <div ref={containerRef} className="h-[45%] landscape:h-full landscape:w-[55%] relative flex flex-col items-center bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-gray-900 via-black to-black p-4 border-r border-white/5 cursor-move group/preview">
-          <div className="w-full flex items-center justify-between z-20">
-              <button onClick={onBack} className="p-2 bg-white/5 rounded-full hover:bg-white/10 text-gray-400 hover:text-white transition-colors"><ArrowLeft className="w-4 h-4" /></button>
-              <div className="flex gap-2">
-                 <button onClick={() => setZoom(z => Math.min(2.5, z+0.1))} className="p-2 bg-white/5 rounded-lg text-white hover:bg-white/10"><ZoomIn className="w-3 h-3"/></button>
-                 <button onClick={() => setZoom(z => Math.max(0.5, z-0.1))} className="p-2 bg-white/5 rounded-lg text-white hover:bg-white/10"><ZoomOut className="w-3 h-3"/></button>
+    <div className="absolute inset-0 w-full h-full bg-transparent flex flex-col landscape:flex-row text-[#e0f2fe] font-mono overflow-hidden select-none">
+      
+      {/* LEFT: PREVIEW & NAME (NO BACKGROUNDS) */}
+      <div ref={containerRef} className="h-[45%] landscape:h-full landscape:w-[55%] relative flex flex-col items-center border-r border-white/5 cursor-move group/preview overflow-hidden bg-transparent">
+          
+          {/* HEADER NAVIGATION */}
+          <div className="absolute top-6 left-6 z-30">
+              <button onClick={onBack} className="p-3 bg-black/40 backdrop-blur-md rounded-full hover:bg-black/60 text-gray-400 hover:text-white transition-colors border border-white/10"><ArrowLeft className="w-5 h-5" /></button>
+          </div>
+          
+          {/* IDENTITY CONTROLS - Enhanced Centering */}
+          <div className="absolute top-12 md:top-20 flex flex-col items-center z-20 w-full px-8 pointer-events-none">
+              <div className="text-[10px] text-white/40 font-mono tracking-[0.5em] mb-3 uppercase animate-fadeIn">Neural Identity Module</div>
+              <div className="flex items-center justify-center gap-6 w-full max-w-xl pointer-events-auto">
+                  <button 
+                    onClick={handleRandomName} 
+                    title="Randomize Name" 
+                    className="p-4 rounded-2xl bg-black/30 backdrop-blur-md border border-white/10 hover:bg-black/60 transition-all shadow-xl group/dna shrink-0"
+                    style={{ borderColor: `${theme.color}55` }}
+                  >
+                    <Dna className="w-8 h-8 group-hover/dna:rotate-180 transition-transform duration-1000" style={{ color: theme.color }} />
+                  </button>
+
+                  <div className="relative flex-1">
+                    <input 
+                      type="text" 
+                      value={neuronName} 
+                      onChange={e => setNeuronName(e.target.value)} 
+                      className="w-full bg-transparent border-b border-white/20 py-3 text-center font-tech text-3xl md:text-5xl uppercase tracking-[0.05em] text-white outline-none focus:border-white/50 transition-all"
+                      style={{ textShadow: nameInputShadow }}
+                    />
+                  </div>
               </div>
+              <div className="mt-4 text-[11px] font-bold tracking-[1.0em] uppercase opacity-90 transition-all" style={{ color: theme.color, textShadow: `0 0 15px ${theme.color}` }}>{theme.label}</div>
           </div>
-          <div className="mt-2 flex flex-col items-center z-20 w-full max-w-sm">
-              <div className="text-[10px] text-white/50 font-mono tracking-widest mb-1">NAME YOUR NODE</div>
-              <input type="text" value={neuronName} onChange={e => setNeuronName(e.target.value)} className="w-full bg-transparent border-b border-white/10 py-1 text-center font-tech text-2xl uppercase tracking-widest text-white outline-none focus:border-white/30" />
-              <div className="mt-1 text-[10px] font-bold tracking-[0.5em] uppercase text-shadow-glow" style={{ color: theme.color }}>{theme.label}</div>
+
+          {/* ZOOM CONTROLS - Separated flanking the node area */}
+          <div className="absolute bottom-12 left-0 right-0 flex items-center justify-center gap-48 md:gap-64 z-30 pointer-events-none">
+              <button 
+                onClick={() => setZoom(z => Math.max(0.5, z-0.1))} 
+                className="p-4 bg-black/30 backdrop-blur-sm rounded-2xl text-white hover:bg-black/60 border border-white/10 pointer-events-auto transition-all hover:scale-110 active:scale-90 shadow-xl"
+              >
+                  <Minus className="w-5 h-5"/>
+              </button>
+              <button 
+                onClick={() => setZoom(z => Math.min(2.5, z+0.1))} 
+                className="p-4 bg-black/30 backdrop-blur-sm rounded-2xl text-white hover:bg-black/60 border border-white/10 pointer-events-auto transition-all hover:scale-110 active:scale-90 shadow-xl"
+              >
+                  <Plus className="w-5 h-5"/>
+              </button>
           </div>
-          <canvas ref={canvasRef} className="w-full h-full object-contain pointer-events-none" />
-          <div className="absolute bottom-4 left-4 z-20 flex gap-2">
-              <button onClick={handleRandomName} title="Randomize Name" className="p-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 active:scale-95 transition-all"><Dna className="w-4 h-4" /></button>
-              <button onClick={handleRandomizeAll} title="Mutate All" className="p-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 active:scale-95 transition-all"><Dice5 className="w-4 h-4" /></button>
-              <button onClick={handleResetToClass} title="Reset to Class" className="p-3 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 active:scale-95 transition-all"><RefreshCw className="w-4 h-4" /></button>
+
+          {/* Centered Canvas Container - Full Transparency for Cosmic Background Interaction */}
+          <div className="w-full h-full flex items-center justify-center p-12 pt-48 md:pt-56 relative bg-transparent">
+            <canvas ref={canvasRef} className="w-full h-full object-contain pointer-events-none drop-shadow-[0_0_40px_rgba(0,0,0,0.5)]" />
           </div>
       </div>
-      <div className="flex-1 landscape:w-[45%] flex flex-col bg-black/40 backdrop-blur-md border-t landscape:border-t-0 border-white/5 overflow-hidden">
-          <div className="flex border-b border-white/10 shrink-0">
-              {['STRUCTURE', 'SURFACE', 'MOTION', 'MUTATION'].map(t => (
-                  <button key={t} onClick={() => { playMenuSelect(); setActiveTab(t as any); }} className={`flex-1 py-4 text-[10px] font-bold uppercase tracking-widest transition-all ${activeTab === t ? 'text-white bg-white/5 border-b-2 border-cyan-500' : 'text-gray-500 hover:text-gray-300'}`}>{t}</button>
-              ))}
+
+      {/* RIGHT: CONTROLS */}
+      <div className="flex-1 landscape:w-[45%] flex flex-col bg-black/60 backdrop-blur-xl border-t landscape:border-t-0 border-white/5 overflow-hidden">
+          <div className="flex border-b border-white/10 shrink-0 items-center">
+              <button 
+                onClick={handleResetToClass} 
+                title="Reset Calibration" 
+                className="p-7 border-r border-white/10 hover:bg-red-500/10 group/reset transition-all"
+              >
+                  <RefreshCw className="w-7 h-7 text-gray-500 group-hover/reset:text-red-400 group-hover/reset:rotate-[-180deg] transition-all duration-500" />
+              </button>
+
+              <div className="flex flex-1">
+                {['STRUCTURE', 'SURFACE', 'MOTION', 'MUTATION'].map(t => (
+                    <button 
+                      key={t} 
+                      onClick={() => { playMenuSelect(); setActiveTab(t as any); }} 
+                      className={`flex-1 py-7 text-xs md:text-sm font-bold uppercase tracking-[0.2em] transition-all ${activeTab === t ? 'text-white bg-white/5' : 'text-gray-500 hover:text-gray-300'}`}
+                      style={{ borderBottom: activeTab === t ? `4px solid ${theme.color}` : 'none' }}
+                    >{t}</button>
+                ))}
+              </div>
           </div>
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-6 space-y-8 pb-32">
+
+          <div className="flex-1 overflow-y-auto custom-scrollbar p-10 space-y-12 pb-48">
               {activeTab === 'STRUCTURE' && (
-                  <div className="space-y-8 animate-fadeIn">
-                      <Slide label="Soma Mass" icon={<CircleDashed className="w-3 h-3"/>} val={somaSize} setter={setSomaSize} displayMin={0.50} displayMax={1.00} maxCap={25} />
-                      <Slide label="Body Shape" icon={<Minimize2 className="w-3 h-3"/>} val={aspectRatio} setter={setAspectRatio} displayMin={0.85} displayMax={1.15} />
-                      <Slide label="Body Distortion" icon={<Waves className="w-3 h-3"/>} val={bodyDistortion} setter={setBodyDistortion} displayMin={0.00} displayMax={0.50} maxCap={25} />
-                      <Slide label="Nucleus Core" icon={<Eye className="w-3 h-3"/>} val={nucleusSize} setter={setNucleusSize} displayMin={0.00} displayMax={1.00} maxCap={25} />
-                      <Slide label="Dendrite Reach" icon={<Network className="w-3 h-3"/>} val={armLength} setter={setArmLength} displayMin={0.10} displayMax={0.75} maxCap={25} />
-                      <Slide label="Arm Thickness" icon={<Grip className="w-3 h-3"/>} val={armThickness} setter={setArmThickness} displayMin={0.00} displayMax={0.40} maxCap={25} />
+                  <div className="space-y-12 animate-fadeIn">
+                      <Slide label="Soma Mass" icon={<CircleDashed className="w-4 h-4"/>} val={somaSize} setter={setSomaSize} displayMin={0.50} displayMax={1.00} maxCap={25} />
+                      <Slide label="Body Shape" icon={<Minimize2 className="w-4 h-4"/>} val={aspectRatio} setter={setAspectRatio} displayMin={0.85} displayMax={1.15} />
+                      <Slide label="Body Distortion" icon={<Waves className="w-4 h-4"/>} val={bodyDistortion} setter={setBodyDistortion} displayMin={0.00} displayMax={0.50} maxCap={25} />
+                      <Slide label="Nucleus Core" icon={<Eye className="w-4 h-4"/>} val={nucleusSize} setter={setNucleusSize} displayMin={0.00} displayMax={1.00} maxCap={25} />
+                      <Slide label="Dendrite Reach" icon={<Network className="w-4 h-4"/>} val={armLength} setter={setArmLength} displayMin={0.10} displayMax={0.75} maxCap={25} />
+                      <Slide label="Arm Thickness" icon={<Grip className="w-4 h-4"/>} val={armThickness} setter={setArmThickness} displayMin={0.00} displayMax={0.40} maxCap={25} />
                   </div>
               )}
               {activeTab === 'SURFACE' && (
-                  <div className="space-y-8 animate-fadeIn">
-                      <Slide label="Bio-Luminescence" icon={<Sun className="w-3 h-3"/>} val={somaLum} setter={setSomaLum} maxCap={25} />
-                      <Slide label="Texture Density" icon={<Layers className="w-3 h-3"/>} val={textureDensity} setter={setTextureDensity} displayMin={0.00} displayMax={0.40} maxCap={25} />
-                      <div className="space-y-6">
+                  <div className="space-y-12 animate-fadeIn">
+                      <Slide label="Bio-Luminescence" icon={<Sun className="w-4 h-4"/>} val={somaLum} setter={setSomaLum} maxCap={25} />
+                      <Slide label="Texture Density" icon={<Layers className="w-4 h-4"/>} val={textureDensity} setter={setTextureDensity} displayMin={0.00} displayMax={0.40} maxCap={25} />
+                      <div className="space-y-10">
                           {[{ label: "Soma Pigment", type: 'SOMA', val: somaColor }, { label: "Nucleus Glow", type: 'NUCLEUS', val: nucleusColor }].map((cp, idx) => (
                               <div key={idx}>
-                                  <div className="text-[10px] text-gray-500 uppercase font-bold mb-3 tracking-widest">{cp.label}</div>
-                                  <div className="grid grid-cols-6 gap-2">{PALETTE.map((c, i) => (
-                                      <button key={i} onClick={() => handleColorSelect(c.hex, cp.type as any, c.locked)} className={`h-8 rounded-lg border transition-all ${cp.val === c.hex ? 'border-white ring-2 ring-white/50 scale-110' : 'border-transparent hover:scale-105'} relative ${c.locked && !isUnlocked ? 'opacity-20 cursor-not-allowed' : ''}`} style={{ backgroundColor: c.hex }}>{c.locked && !isUnlocked && <Lock className="w-3 h-3 text-black absolute inset-0 m-auto"/>}</button>
+                                  <div className="text-[10px] text-gray-600 uppercase font-bold mb-5 tracking-widest">{cp.label}</div>
+                                  <div className="grid grid-cols-6 gap-4">{PALETTE.map((c, i) => (
+                                      <button key={i} onClick={() => handleColorSelect(c.hex, cp.type as any, c.locked)} className={`h-12 rounded-xl border-2 transition-all ${cp.val === c.hex ? 'border-white scale-110 shadow-2xl z-10' : 'border-transparent hover:scale-105'} relative ${c.locked && !isUnlocked ? 'opacity-20 cursor-not-allowed' : ''}`} style={{ backgroundColor: c.hex, boxShadow: cp.val === c.hex ? `0 0 20px ${c.hex}` : 'none' }}>{c.locked && !isUnlocked && <Lock className="w-5 h-5 text-black absolute inset-0 m-auto"/>}</button>
                                   ))}</div>
                               </div>
                           ))}
@@ -379,33 +449,55 @@ export const NeuronBuilder: React.FC<NeuronBuilderProps> = ({ archetype, onCompl
                   </div>
               )}
               {activeTab === 'MOTION' && (
-                  <div className="space-y-8 animate-fadeIn">
-                       {!isUnlocked && <div className="p-4 bg-red-900/20 border border-red-500/30 rounded-2xl text-[10px] text-red-400 font-bold uppercase tracking-widest flex items-center gap-3"><Lock className="w-4 h-4" /> Evolutionary Unlock Required</div>}
-                       <Slide label="Spooky Motion" icon={<RotateCw className="w-3 h-3"/>} val={spookySpeed} setter={setSpookySpeed} displayMin={0.00} displayMax={0.25} locked={true} />
-                       <Slide label="Quantum Trails" icon={<Wind className="w-3 h-3"/>} val={trailLevel} setter={setTrailLevel} displayMin={0.00} displayMax={0.60} locked={true} />
-                       <Slide label="Nucleus Pulse" icon={<Activity className="w-3 h-3"/>} val={pulseIntensity} setter={setPulseIntensity} displayMin={0.00} displayMax={1.00} locked={true} />
+                  <div className="space-y-12 animate-fadeIn">
+                       {!isUnlocked && <div className="p-8 bg-red-900/20 border border-red-500/30 rounded-3xl text-[12px] text-red-400 font-bold uppercase tracking-[0.2em] flex items-center gap-5 shadow-inner"><Lock className="w-6 h-6" /> Evolutionary Unlock Required</div>}
+                       <Slide label="Spooky Motion" icon={<RotateCw className="w-4 h-4"/>} val={spookySpeed} setter={setSpookySpeed} displayMin={0.00} displayMax={0.25} locked={true} />
+                       <Slide label="Quantum Trails" icon={<Wind className="w-4 h-4"/>} val={trailLevel} setter={setTrailLevel} displayMin={0.00} displayMax={0.60} locked={true} />
+                       <Slide label="Nucleus Pulse" icon={<Activity className="w-4 h-4"/>} val={pulseIntensity} setter={setPulseIntensity} displayMin={0.00} displayMax={1.00} locked={true} />
                   </div>
               )}
               {activeTab === 'MUTATION' && (
-                  <div className="space-y-8 animate-fadeIn">
-                      <Slide label="Flow State" icon={<Waves className="w-3 h-3"/>} val={waviness} setter={setWaviness} displayMin={0.01} displayMax={0.012} maxCap={5} />
-                      <Slide label="Spiny Protrusions" icon={<Triangle className="w-3 h-3"/>} val={spikeFactor} setter={setSpikeFactor} displayMin={0.00} displayMax={1.00} locked={true} />
-                      <Slide label="Protrusion Angle" icon={<Compass className="w-3 h-3"/>} val={spikeAngle} setter={setSpikeAngle} displayMin={0} displayMax={180} locked={true} />
+                  <div className="space-y-12 animate-fadeIn">
+                      <Slide label="Flow State" icon={<Waves className="w-4 h-4"/>} val={waviness} setter={setWaviness} displayMin={0.01} displayMax={0.012} maxCap={5} />
+                      {/* Triangle icon correctly used here after being added to imports */}
+                      <Slide label="Spiny Protrusions" icon={<Triangle className="w-4 h-4"/>} val={spikeFactor} setter={setSpikeFactor} displayMin={0.00} displayMax={1.00} locked={true} />
+                      <Slide label="Protrusion Angle" icon={<Compass className="w-4 h-4"/>} val={spikeAngle} setter={setSpikeAngle} displayMin={0} displayMax={180} locked={true} />
                   </div>
               )}
           </div>
       </div>
-      <div className="absolute bottom-0 right-0 w-full landscape:w-[45%] p-6 bg-gradient-to-t from-black via-black/80 to-transparent z-50 pointer-events-none">
-          <div className="pointer-events-auto">
+
+      {/* FOOTER ACTIONS - Refined smaller button, high-transparency glass look */}
+      <div className="absolute bottom-0 right-0 w-full landscape:w-[45%] p-10 bg-gradient-to-t from-black via-black/95 to-transparent z-50 pointer-events-none">
+          <div className="pointer-events-auto flex gap-6 items-center">
             {!isGenerating ? (
-                <button onClick={() => { playNeuralLink(); setIsGenerating(true); handleFinish(); }} className="w-full py-6 rounded-2xl font-tech text-xl uppercase tracking-[0.3em] text-white shadow-2xl transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-4 relative overflow-hidden group border border-white/20" style={{ backgroundColor: theme.color }}>
-                    <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
-                    <span className="relative z-10 flex items-center gap-3 font-bold text-shadow-glow"><Zap className="w-6 h-6 fill-current" /> Finish Differentiation</span>
-                </button>
+                <>
+                    <button 
+                        onClick={() => { playDataOpen(); handleRandomizeAll(); }} 
+                        className="p-5 rounded-2xl bg-black/40 backdrop-blur-md border border-white/10 hover:bg-black/60 transition-all flex items-center justify-center group/mutate shadow-xl active:scale-95"
+                        style={{ 
+                            borderColor: `${theme.color}55`
+                        }}
+                    >
+                        <Dice5 className="w-10 h-10 transition-all duration-700 group-hover/mutate:rotate-[360deg]" style={{ color: theme.color }} />
+                    </button>
+                    
+                    <button 
+                        onClick={() => { playNeuralLink(); setIsGenerating(true); handleFinish(); }} 
+                        className="flex-1 py-4 rounded-2xl font-tech text-base md:text-lg uppercase tracking-[0.2em] text-white shadow-2xl transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-4 relative overflow-hidden group border border-white/20 bg-opacity-40 backdrop-blur-md" 
+                        style={{ backgroundColor: `${theme.color}44` }}
+                    >
+                        <div className="absolute inset-0 bg-white/5 translate-y-full group-hover:translate-y-0 transition-transform duration-300"></div>
+                        <span className="relative z-10 flex items-center gap-3 font-bold text-shadow-glow">
+                            <Zap className="w-6 h-6 fill-current group-hover:animate-bounce" /> 
+                            Finish Differentiation
+                        </span>
+                    </button>
+                </>
             ) : (
-                <div className="w-full bg-gray-900 h-20 rounded-2xl border border-white/10 relative overflow-hidden flex flex-col items-center justify-center shadow-inner">
-                    <div className="absolute left-0 top-0 h-full opacity-50 transition-all duration-75" style={{ width: `${generationProgress}%`, backgroundColor: theme.color }}></div>
-                    <span className="relative z-10 font-mono text-xs animate-pulse tracking-[0.5em] text-white">WEAVING CELLULAR MATRIX... {generationProgress}%</span>
+                <div className="w-full bg-gray-900 h-20 rounded-2xl border border-white/10 relative overflow-hidden flex flex-col items-center justify-center shadow-[inset_0_0_20px_rgba(0,0,0,0.8)]">
+                    <div className="absolute left-0 top-0 h-full opacity-70 transition-all duration-75" style={{ width: `${generationProgress}%`, backgroundColor: theme.color, boxShadow: `0 0 40px ${theme.color}44` }}></div>
+                    <span className="relative z-10 font-mono text-xs animate-pulse tracking-[0.4em] text-white uppercase font-bold">Bio-Forge Calibration... {generationProgress}%</span>
                 </div>
             )}
           </div>

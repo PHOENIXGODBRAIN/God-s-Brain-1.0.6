@@ -24,6 +24,9 @@ export interface UserState {
   path: UserPath;
   isPremium: boolean;
   queriesUsed: number;
+  level: number;
+  xp: number;
+  entropy: number;
 }
 
 export interface UserProfile {
@@ -33,6 +36,8 @@ export interface UserProfile {
   provider: 'google' | 'apple' | 'email' | 'anonymous';
   archetype?: string;
   startingSkill?: string;
+  level: number;
+  xp: number;
 }
 
 export interface Chapter {
@@ -42,6 +47,7 @@ export interface Chapter {
   isLocked: boolean;
   content: string;
   visualCue?: string;
+  imgUrl?: string;
 }
 
 // Simulated Database Record

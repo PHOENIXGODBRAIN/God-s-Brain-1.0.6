@@ -54,11 +54,14 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onLogin, onClose }) => {
                 clearInterval(interval);
                 // Finalize Login
                 setTimeout(() => {
+                    // Fix: Adding missing level and xp properties required by UserProfile interface.
                     const mockProfile: UserProfile = {
                         name: oauthProvider === 'google' ? 'Google User' : 'Apple User',
                         email: oauthProvider === 'google' ? 'user@gmail.com' : 'user@icloud.com',
                         avatar: oauthProvider === 'google' ? 'https://lh3.googleusercontent.com/a/default-user=s96-c' : undefined,
-                        provider: oauthProvider!
+                        provider: oauthProvider!,
+                        level: 1,
+                        xp: 0
                     };
                     onLogin(mockProfile);
                 }, 800);
@@ -81,7 +84,8 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onLogin, onClose }) => {
         playNeuralLink();
         setLoading('email');
         setTimeout(() => {
-            onLogin({ name: 'The Phoenix', email: 'phoenix', provider: 'email' });
+            // Fix: Adding level: 99 and xp: 0 for the author profile.
+            onLogin({ name: 'The Phoenix', email: 'phoenix', provider: 'email', level: 99, xp: 0 });
         }, 1000);
         return;
     }
@@ -95,10 +99,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({ onLogin, onClose }) => {
     setLoading('email');
     
     setTimeout(() => {
+        // Fix: Adding missing level and xp properties required by UserProfile interface.
         const mockProfile: UserProfile = {
             name: email.split('@')[0],
             email: email,
-            provider: 'email'
+            provider: 'email',
+            level: 1,
+            xp: 0
         };
         onLogin(mockProfile);
     }, 2000);

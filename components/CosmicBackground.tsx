@@ -8,45 +8,45 @@ interface CosmicBackgroundProps {
 
 export const CosmicBackground: React.FC<CosmicBackgroundProps> = ({ path = UserPath.NONE }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const mouseRef = useRef({ x: -1000, y: -1000 });
+  const mouseRef = useRef({ x: -1000, y: -1000, active: false });
 
   const getConfig = (p: UserPath) => {
     switch (p) {
       case UserPath.SCIENTIFIC:
         return {
-          colors: ['#00FFFF', '#3B82F6'], 
-          lineColor: 'rgba(0, 255, 255, ',
+          colors: ['#00FFFF', '#3B82F6', '#ffffff'], 
+          lineColor: '0, 255, 255',
           particleCount: 120,
           connectionDist: 150,
-          forceRadius: 200,
-          speedMod: 0.5
+          hubFreq: 0.1,
+          bg: '#000000'
         };
       case UserPath.RELIGIOUS:
         return {
-          colors: ['#A855F7', '#6366F1'], 
-          lineColor: 'rgba(168, 85, 247, ',
-          particleCount: 100,
+          colors: ['#FFD700', '#FFA500', '#ffffff'], 
+          lineColor: '255, 215, 0',
+          particleCount: 110,
           connectionDist: 180,
-          forceRadius: 300,
-          speedMod: 0.3
+          hubFreq: 0.15,
+          bg: '#000000'
         };
       case UserPath.BLENDED:
         return {
-          colors: ['#FFD700', '#FF4500'], 
-          lineColor: 'rgba(255, 215, 0, ',
-          particleCount: 150,
+          colors: ['#A855F7', '#E879F9', '#ffffff'], 
+          lineColor: '168, 85, 247',
+          particleCount: 140,
           connectionDist: 140,
-          forceRadius: 250,
-          speedMod: 1.2
+          hubFreq: 0.12,
+          bg: '#000000'
         };
       default:
         return {
-          colors: ['#00FFFF', '#FFD700', '#A855F7'], 
-          lineColor: 'rgba(255, 255, 255, ',
-          particleCount: 110,
+          colors: ['#00FFFF', '#FFD700', '#A855F7', '#FFFFFF'], 
+          lineColor: '255, 255, 255',
+          particleCount: 100,
           connectionDist: 140,
-          forceRadius: 250,
-          speedMod: 0.6
+          hubFreq: 0.08,
+          bg: '#000000'
         };
     }
   };
@@ -54,13 +54,19 @@ export const CosmicBackground: React.FC<CosmicBackgroundProps> = ({ path = UserP
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { alpha: false });
     if (!ctx) return;
 
     let width = window.innerWidth;
     let height = window.innerHeight;
     let animationFrameId: number;
     const config = getConfig(path);
+
+    // Dynamic UI styling sync - Hex based
+    const root = document.documentElement;
+    const mainColor = config.colors[0];
+    root.style.setProperty('--path-color', mainColor);
+    // Glow is handled in App.tsx using color + '4D' for hex strings
 
     class Particle {
       x: number;
@@ -69,47 +75,66 @@ export const CosmicBackground: React.FC<CosmicBackgroundProps> = ({ path = UserP
       vy: number;
       size: number;
       color: string;
+      baseSize: number;
+      pulse: number;
+      pulseSpeed: number;
+      isHub: boolean;
 
       constructor() {
         this.x = Math.random() * width;
         this.y = Math.random() * height;
-        this.vx = (Math.random() - 0.5) * config.speedMod;
-        this.vy = (Math.random() - 0.5) * config.speedMod;
-        this.size = Math.random() * 2 + 0.5;
+        this.vx = (Math.random() - 0.5) * 0.3;
+        this.vy = (Math.random() - 0.5) * 0.3;
+        this.isHub = Math.random() < config.hubFreq;
+        this.baseSize = this.isHub ? Math.random() * 3 + 2 : Math.random() * 1.5 + 0.5;
+        this.size = this.baseSize;
         this.color = config.colors[Math.floor(Math.random() * config.colors.length)];
+        this.pulse = Math.random() * Math.PI * 2;
+        this.pulseSpeed = 0.01 + Math.random() * 0.02;
       }
 
       update() {
-        const dx = mouseRef.current.x - this.x;
-        const dy = mouseRef.current.y - this.y;
-        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (mouseRef.current.active) {
+            const dx = mouseRef.current.x - this.x;
+            const dy = mouseRef.current.y - this.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            const forceRadius = 300;
 
-        if (distance < config.forceRadius) {
-          const force = (config.forceRadius - distance) / config.forceRadius;
-          const dir = path === UserPath.SCIENTIFIC ? 1 : -1; 
-          this.vx += (dx / distance) * force * 0.5 * dir;
-          this.vy += (dy / distance) * force * 0.5 * dir;
+            if (distance < forceRadius) {
+                const force = (forceRadius - distance) / forceRadius;
+                this.x += (dx / distance) * force * 1.2;
+                this.y += (dy / distance) * force * 1.2;
+            }
         }
 
         this.x += this.vx;
         this.y += this.vy;
-        this.vx *= 0.95; 
-        this.vy *= 0.95;
 
         if (this.x < 0) this.x = width;
         if (this.x > width) this.x = 0;
         if (this.y < 0) this.y = height;
         if (this.y > height) this.y = 0;
+        
+        this.pulse += this.pulseSpeed;
+        this.size = this.baseSize + Math.sin(this.pulse) * (this.isHub ? 1.5 : 0.5);
       }
 
       draw() {
         if (!ctx) return;
-        const pulse = Math.sin(Date.now() * 0.002 + this.x) * 0.3 + 0.7;
         ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.arc(this.x, this.y, Math.max(0.1, this.size), 0, Math.PI * 2);
         ctx.fillStyle = this.color;
-        ctx.globalAlpha = pulse;
+        
+        if (this.isHub) {
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = this.color;
+            ctx.globalAlpha = 0.9;
+        } else {
+            ctx.globalAlpha = 0.5;
+        }
+        
         ctx.fill();
+        ctx.shadowBlur = 0;
         ctx.globalAlpha = 1.0;
       }
     }
@@ -123,21 +148,40 @@ export const CosmicBackground: React.FC<CosmicBackgroundProps> = ({ path = UserP
     };
 
     const animate = () => {
-      ctx.clearRect(0, 0, width, height);
-      
+      ctx.fillStyle = '#000000'; 
+      ctx.fillRect(0, 0, width, height);
+
       for (let a = 0; a < particles.length; a++) {
+        const p1 = particles[a];
+        
+        if (mouseRef.current.active) {
+            const dxM = mouseRef.current.x - p1.x;
+            const dyM = mouseRef.current.y - p1.y;
+            const distM = Math.sqrt(dxM * dxM + dyM * dyM);
+            if (distM < 250) {
+                const opacity = (1 - (distM / 250)) * 0.4;
+                ctx.strokeStyle = `rgba(${config.lineColor}, ${opacity})`;
+                ctx.lineWidth = opacity * 2.5;
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(mouseRef.current.x, mouseRef.current.y);
+                ctx.stroke();
+            }
+        }
+
         for (let b = a + 1; b < particles.length; b++) {
-          const dx = particles[a].x - particles[b].x;
-          const dy = particles[a].y - particles[b].y;
+          const p2 = particles[b];
+          const dx = p1.x - p2.x;
+          const dy = p1.y - p2.y;
           const distance = Math.sqrt(dx * dx + dy * dy);
 
           if (distance < config.connectionDist) {
-            const opacity = 1 - (distance / config.connectionDist);
-            ctx.strokeStyle = config.lineColor + (opacity * 0.3) + ')';
+            const opacity = (1 - (distance / config.connectionDist)) * 0.2;
+            ctx.strokeStyle = `rgba(${config.lineColor}, ${opacity})`;
             ctx.lineWidth = 0.5;
             ctx.beginPath();
-            ctx.moveTo(particles[a].x, particles[a].y);
-            ctx.lineTo(particles[b].x, particles[b].y);
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
             ctx.stroke();
           }
         }
@@ -160,11 +204,23 @@ export const CosmicBackground: React.FC<CosmicBackgroundProps> = ({ path = UserP
     };
 
     const handleMouseMove = (e: MouseEvent) => {
-        mouseRef.current = { x: e.clientX, y: e.clientY };
+        mouseRef.current = { x: e.clientX, y: e.clientY, active: true };
+    };
+
+    const handleMouseLeave = () => {
+        mouseRef.current.active = false;
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+        if(e.touches.length > 0) {
+            mouseRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, active: true };
+        }
     };
 
     window.addEventListener('resize', handleResize);
     window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseleave', handleMouseLeave);
+    window.addEventListener('touchmove', handleTouchMove);
 
     handleResize();
     animate();
@@ -172,14 +228,15 @@ export const CosmicBackground: React.FC<CosmicBackgroundProps> = ({ path = UserP
     return () => {
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseleave', handleMouseLeave);
+      window.removeEventListener('touchmove', handleTouchMove);
       cancelAnimationFrame(animationFrameId);
     };
   }, [path]);
 
   return (
-    <div className="fixed inset-0 z-[-1] bg-black">
+    <div className="fixed inset-0 z-0 pointer-events-none overflow-hidden bg-black">
        <canvas ref={canvasRef} className="block w-full h-full" />
-       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(0,0,0,0.7)_100%)] pointer-events-none"></div>
     </div>
   );
 };

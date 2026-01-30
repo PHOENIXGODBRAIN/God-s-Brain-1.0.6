@@ -385,12 +385,12 @@ export const NeuralInit: React.FC<NeuralInitProps> = ({ mode, userName, onComple
       else setStep(prev => prev - 1);
   };
 
-  if (activeQuestions.length === 0) return <div className="h-screen w-full bg-black flex items-center justify-center text-cyan-500 animate-pulse font-mono tracking-widest uppercase">Initializing Protocol...</div>;
+  if (activeQuestions.length === 0) return <div className="h-screen w-full bg-transparent flex items-center justify-center text-cyan-500 animate-pulse font-mono tracking-widest uppercase">Initializing Protocol...</div>;
 
   const currentQ = activeQuestions[step];
 
   return (
-    <div className="relative h-screen w-full overflow-hidden bg-black text-white flex items-center justify-center font-mono">
+    <div className="relative h-screen w-full overflow-hidden bg-transparent text-white flex items-center justify-center font-mono">
       <div className="absolute inset-0 bg-black/80 pointer-events-none z-0"></div>
       <div className="relative z-20 w-full max-w-xl px-4 animate-scaleIn">
          <div className="bg-black/60 backdrop-blur-2xl border border-cyan-900/50 rounded-3xl p-8 md:p-12 shadow-[0_0_80px_rgba(0,255,255,0.1)] relative overflow-hidden">
@@ -402,7 +402,7 @@ export const NeuralInit: React.FC<NeuralInitProps> = ({ mode, userName, onComple
              <h3 className="text-xl md:text-2xl font-reading tracking-wide text-white leading-relaxed mb-10 text-center min-h-[100px] flex items-center justify-center animate-fadeIn">{currentQ.text}</h3>
              <div className="space-y-4">
                  {currentQ.options.map((opt: any, i: number) => (
-                     <button key={i} onClick={() => handleAnswer(opt)} className="w-full text-left p-5 bg-white/5 border border-white/10 rounded-xl hover:bg-cyan-900/20 hover:border-cyan-500 transition-all group flex items-center gap-4 relative overflow-hidden active:scale-[0.98] duration-100">
+                     <button key={i} onClick={() => handleAnswer(opt)} className="w-full text-left p-5 bg-white/5 border border-white/10 rounded-xl hover:bg-[#00FFFF]/10 hover:border-[#00FFFF] transition-all group flex items-center gap-4 relative overflow-hidden active:scale-[0.98] duration-100">
                          <div className="absolute inset-0 bg-cyan-500/10 translate-x-[-100%] group-hover:translate-x-0 transition-transform duration-500"></div>
                          <span className="text-2xl relative z-10">{opt.icon}</span>
                          <span className="font-reading text-lg text-gray-300 group-hover:text-white flex-1 relative z-10 tracking-wide">{opt.label}</span>
